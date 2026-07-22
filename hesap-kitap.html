@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="theme-color" content="#1B2430" />
+<title>Hesap Kitap</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231B2430%22/><text x=%2250%22 y=%2266%22 font-size=%2255%22 text-anchor=%22middle%22 fill=%22%23C9A227%22>₺</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;}
+  body{margin:0;background:#F1ECE1;color:#1B2430;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  button,input{font-family:inherit;}
+  button{border:none;cursor:pointer;background:none;color:inherit;}
+  input{outline:none;}
+  .font-serif{font-family:Georgia,"Times New Roman",serif;}
+  .font-mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;}
+
+  .flex{display:flex;} .flex-1{flex:1 1 0%;} .flex-wrap{flex-wrap:wrap;}
+  .grid{display:grid;} .grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .items-center{align-items:center;} .items-start{align-items:flex-start;}
+  .justify-between{justify-content:space-between;}
+  .inline-block{display:inline-block;} .inline-flex{display:inline-flex;}
+  .min-h-screen{min-height:100vh;} .min-w-0{min-width:0;} .min-w-\[140px\]{min-width:140px;}
+  .max-w-md{max-width:28rem;} .mx-auto{margin-left:auto;margin-right:auto;}
+  .overflow-hidden{overflow:hidden;} .overflow-x-auto{overflow-x:auto;} .overflow-y-auto{overflow-y:auto;}
+  .w-2{width:0.5rem;} .w-9{width:2.25rem;} .w-20{width:5rem;} .w-24{width:6rem;} .w-full{width:100%;}
+  .h-2{height:0.5rem;} .h-2\.5{height:0.625rem;} .h-9{height:2.25rem;} .h-40{height:10rem;}
+  .max-h-48{max-height:12rem;} .max-h-52{max-height:13rem;}
+  .text-right{text-align:right;}
+  .whitespace-nowrap{white-space:nowrap;}
+  .last\:border-0:last-child{border-width:0;}
+
+  .-mt-10{margin-top:-2.5rem;}
+  .mt-1{margin-top:0.25rem;} .mt-2{margin-top:0.5rem;} .mt-3{margin-top:0.75rem;}
+  .mb-1{margin-bottom:0.25rem;} .mb-2{margin-bottom:0.5rem;} .mb-3{margin-bottom:0.75rem;}
+  .mb-4{margin-bottom:1rem;} .mb-5{margin-bottom:1.25rem;}
+  .ml-2{margin-left:0.5rem;}
+  .pt-1{padding-top:0.25rem;} .pt-8{padding-top:2rem;}
+  .pb-10{padding-bottom:2.5rem;} .pb-16{padding-bottom:4rem;}
+  .p-1{padding:0.25rem;} .p-4{padding:1rem;} .p-5{padding:1.25rem;}
+  .px-2\.5{padding-left:0.625rem;padding-right:0.625rem;}
+  .px-3{padding-left:0.75rem;padding-right:0.75rem;}
+  .px-4{padding-left:1rem;padding-right:1rem;}
+  .px-5{padding-left:1.25rem;padding-right:1.25rem;}
+  .py-1{padding-top:0.25rem;padding-bottom:0.25rem;}
+  .py-1\.5{padding-top:0.375rem;padding-bottom:0.375rem;}
+  .py-2{padding-top:0.5rem;padding-bottom:0.5rem;}
+  .py-3{padding-top:0.75rem;padding-bottom:0.75rem;}
+  .gap-1{gap:0.25rem;} .gap-1\.5{gap:0.375rem;} .gap-2{gap:0.5rem;} .gap-3{gap:0.75rem;}
+  .gap-x-4{column-gap:1rem;} .gap-y-1{row-gap:0.25rem;}
+  .space-y-1\.5>*+*{margin-top:0.375rem;}
+  .space-y-2>*+*{margin-top:0.5rem;}
+  .space-y-5>*+*{margin-top:1.25rem;}
+
+  .border{border-width:1px;border-style:solid;border-color:#e5e7eb;}
+  .border-b{border-bottom-width:1px;border-bottom-style:solid;}
+  .border-\[\#D8D0BE\]{border-color:#D8D0BE;}
+  .border-\[\#F1ECE1\]{border-color:#F1ECE1;}
+  .rounded-lg{border-radius:0.5rem;} .rounded-2xl{border-radius:1rem;} .rounded-full{border-radius:9999px;}
+  .rounded-b-\[2rem\]{border-bottom-left-radius:2rem;border-bottom-right-radius:2rem;}
+  .shadow-sm{box-shadow:0 1px 2px rgba(0,0,0,0.06);}
+  .shadow-md{box-shadow:0 4px 10px rgba(0,0,0,0.10);}
+  .underline{text-decoration:underline;} .underline-offset-2{text-underline-offset:2px;}
+
+  .bg-white{background-color:#fff;} .bg-white\/60{background-color:rgba(255,255,255,0.6);}
+  .bg-\[\#1B2430\]{background-color:#1B2430;}
+  .bg-\[\#2F6E5C\]{background-color:#2F6E5C;}
+  .bg-\[\#3A241D\]{background-color:#3A241D;}
+  .bg-\[\#8A5FBF\]{background-color:#8A5FBF;}
+  .bg-\[\#F1ECE1\]{background-color:#F1ECE1;}
+  .text-white{color:#fff;}
+  .text-\[\#1B2430\]{color:#1B2430;}
+  .text-\[\#2F6E5C\]{color:#2F6E5C;}
+  .text-\[\#4A4438\]{color:#4A4438;}
+  .text-\[\#6B7280\]{color:#6B7280;}
+  .text-\[\#8A5FBF\]{color:#8A5FBF;}
+  .text-\[\#8A8272\]{color:#8A8272;}
+  .text-\[\#8A93A3\]{color:#8A93A3;}
+  .text-\[\#B24C34\]{color:#B24C34;}
+  .text-\[\#B24C34\]\/60{color:rgba(178,76,52,0.6);}
+  .text-\[\#C9A227\]{color:#C9A227;}
+  .text-\[\#F1ECE1\]{color:#F1ECE1;}
+  .hover\:text-\[\#B24C34\]:hover{color:#B24C34;}
+  .hover\:text-white:hover{color:#fff;}
+
+  .text-2xl{font-size:1.5rem;line-height:2rem;} .text-3xl{font-size:1.875rem;line-height:2.25rem;}
+  .text-lg{font-size:1.125rem;line-height:1.75rem;}
+  .text-sm{font-size:0.875rem;line-height:1.25rem;} .text-xs{font-size:0.75rem;line-height:1rem;}
+  .text-\[11px\]{font-size:11px;}
+  .font-medium{font-weight:500;} .font-semibold{font-weight:600;}
+  .tracking-tight{letter-spacing:-0.025em;} .tracking-wider{letter-spacing:0.05em;}
+  .uppercase{text-transform:uppercase;} .italic{font-style:italic;}
+  .leading-relaxed{line-height:1.625;} .tabular-nums{font-variant-numeric:tabular-nums;}
+
+  .focus\:outline-none:focus{outline:none;}
+  .focus\:ring-2:focus{box-shadow:0 0 0 2px var(--ring-color,#C9A227);}
+  .focus\:ring-\[\#C9A227\]:focus{--ring-color:#C9A227;}
+  .focus\:ring-\[\#8A5FBF\]:focus{--ring-color:#8A5FBF;}
+  .focus\:ring-\[\#2F6E5C\]:focus{--ring-color:#2F6E5C;}
+  .active\:scale-95:active{transform:scale(0.95);}
+  button{transition:transform 0.1s ease,background-color 0.15s ease,color 0.15s ease;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useMemo } = React;
+
+const tl = (n) =>
+  (isFinite(n) ? n : 0).toLocaleString("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 0 });
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+const AY_ADLARI = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+
+function bugunEtiketi() {
+  const d = new Date();
+  return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+}
+
+function ayBilgisi(ofset) {
+  const bugun = new Date();
+  const d = new Date(bugun.getFullYear(), bugun.getMonth() + ofset, 1);
+  return { etiket: `${AY_ADLARI[d.getMonth()]} ${d.getFullYear()}` };
+}
+
+function hesaplaAsgariOdemePlani({ bakiye, aylikFaizYuzde, asgariYuzde, tabanOdeme, vergiYuzde }) {
+  const r = aylikFaizYuzde / 100, m = asgariYuzde / 100, vergi = vergiYuzde / 100;
+  let bal = bakiye;
+  const rows = [];
+  let toplamFaiz = 0, toplamOdeme = 0, ay = 0;
+  const MAX_AY = 600;
+  let hicBitmiyor = false;
+
+  while (bal > 1 && ay < MAX_AY) {
+    ay += 1;
+    const faiz = bal * r;
+    const faizVeVergi = faiz * (1 + vergi);
+    let odeme = Math.max(bal * m, tabanOdeme);
+    odeme = Math.min(odeme, bal + faizVeVergi);
+    if (odeme <= faizVeVergi + 0.01) {
+      hicBitmiyor = true;
+      rows.push({ ay, bakiye: Math.round(bal) });
+      break;
+    }
+    bal = bal + faizVeVergi - odeme;
+    toplamFaiz += faizVeVergi;
+    toplamOdeme += odeme;
+    rows.push({ ay, bakiye: Math.max(Math.round(bal), 0) });
+  }
+
+  return { rows, toplamFaiz: Math.round(toplamFaiz), toplamOdeme: Math.round(toplamOdeme), aySayisi: ay, hicBitmiyor, bitmedi: ay >= MAX_AY && bal > 1 };
+}
+
+function sonrakiTekrarGunSayisi(gun) {
+  if (!gun) return null;
+  const bugun = new Date();
+  let hedef = new Date(bugun.getFullYear(), bugun.getMonth(), gun);
+  if (hedef < new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate())) {
+    hedef = new Date(bugun.getFullYear(), bugun.getMonth() + 1, gun);
+  }
+  return Math.round((hedef - new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate())) / 86400000);
+}
+
+const ARAC_KATEGORILERI = [
+  { id: "yakit", label: "Yakıt", renk: "#C9A227", emoji: "⛽" },
+  { id: "sigorta", label: "Sigorta", renk: "#2F6E5C", emoji: "🛡️" },
+  { id: "bakim", label: "Bakım/Servis", renk: "#6B7280", emoji: "🔧" },
+  { id: "otopark", label: "Otopark/Geçiş", renk: "#8A5FBF", emoji: "🅿️" },
+  { id: "diger", label: "Diğer", renk: "#B24C34", emoji: "…" },
+];
+
+const POPULER_ABONELIKLER = [
+  { ad: "Netflix", renk: "#B2333B" },
+  { ad: "Spotify", renk: "#2F8F5B" },
+  { ad: "YouTube Premium", renk: "#C4302B" },
+  { ad: "Disney+", renk: "#3E5C9A" },
+  { ad: "Apple Music", renk: "#C9457A" },
+  { ad: "Amazon Prime", renk: "#3E7B9A" },
+];
+
+function KalemListesi({ baslik, renk, kalemler, onEkle, onSil, emoji }) {
+  const [ad, setAd] = useState("");
+  const [tutar, setTutar] = useState("");
+  const [gun, setGun] = useState("");
+
+  const ekle = () => {
+    const t = parseFloat(tutar.replace(",", "."));
+    if (!ad.trim() || !t || t <= 0) return;
+    onEkle({ id: uid(), ad: ad.trim(), tutar: t, gun: gun ? parseInt(gun, 10) : null });
+    setAd(""); setTutar(""); setGun("");
+  };
+
+  const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+
+  return (
+    <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2"><span>{emoji}</span><h3 className="font-semibold text-[#1B2430] tracking-tight">{baslik}</h3></div>
+        <span className="font-mono text-sm font-semibold" style={{ color: renk }}>{tl(toplam)}</span>
+      </div>
+
+      <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+        {kalemler.length === 0 && <p className="text-sm text-[#8A8272] italic">Henüz kalem eklenmedi.</p>}
+        {kalemler.map((k) => (
+          <div key={k.id} className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 text-sm">
+            <div>
+              <span className="text-[#1B2430]">{k.ad}</span>
+              {k.gun && <span className="ml-2 text-[11px] text-[#8A8272]">· her ayın {k.gun}'i</span>}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+              <button onClick={() => onSil(k.id)} className="text-[#B24C34]/60 hover:text-[#B24C34]">🗑</button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-2 mb-2">
+        <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Ör. Maaş, Kira"
+          className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+        <input value={tutar} onChange={(e) => setTutar(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ekle()}
+          inputMode="decimal" placeholder="₺"
+          className="w-24 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+      </div>
+      <div className="flex gap-2">
+        <input value={gun} onChange={(e) => setGun(e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric"
+          placeholder="Her ay tekrar günü (opsiyonel, ör. 1)"
+          className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+        <button onClick={ekle} className="rounded-lg px-3 text-white active:scale-95" style={{ backgroundColor: renk }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function AbonelikBolumu({ kalemler, onEkle, onSil }) {
+  const [ad, setAd] = useState("");
+  const [tutar, setTutar] = useState("");
+  const [gun, setGun] = useState("");
+
+  const ekle = () => {
+    const t = parseFloat(tutar.replace(",", "."));
+    if (!ad.trim() || !t || t <= 0) return;
+    onEkle({ id: uid(), ad: ad.trim(), tutar: t, gun: gun ? parseInt(gun, 10) : null });
+    setAd(""); setTutar(""); setGun("");
+  };
+
+  const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+  const siraliKalemler = [...kalemler].sort((a, b) => {
+    const ga = sonrakiTekrarGunSayisi(a.gun), gb = sonrakiTekrarGunSayisi(b.gun);
+    if (ga === null) return 1;
+    if (gb === null) return -1;
+    return ga - gb;
+  });
+
+  return (
+    <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2"><span>🔁</span><h3 className="font-semibold text-[#1B2430] tracking-tight">Abonelikler</h3></div>
+        <span className="font-mono text-sm font-semibold text-[#8A5FBF]">{tl(toplam)}/ay</span>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {POPULER_ABONELIKLER.map((p) => (
+          <button key={p.ad} onClick={() => setAd(p.ad)} className="text-xs px-3 py-1.5 rounded-full border"
+            style={{ borderColor: p.renk, color: ad === p.ad ? "white" : p.renk, backgroundColor: ad === p.ad ? p.renk : "transparent" }}>
+            {p.ad}
+          </button>
+        ))}
+      </div>
+
+      <div className="space-y-2 mb-4 max-h-52 overflow-y-auto">
+        {siraliKalemler.length === 0 && <p className="text-sm text-[#8A8272] italic">Henüz abonelik eklenmedi.</p>}
+        {siraliKalemler.map((k) => {
+          const kalanGun = sonrakiTekrarGunSayisi(k.gun);
+          const yakinda = kalanGun !== null && kalanGun <= 7;
+          return (
+            <div key={k.id} className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 text-sm">
+              <div>
+                <span className="text-[#1B2430]">{k.ad}</span>
+                {kalanGun !== null && (
+                  <span className={`ml-2 text-[11px] ${yakinda ? "text-[#B24C34] font-medium" : "text-[#8A8272]"}`}>
+                    🕐 {kalanGun === 0 ? "bugün yenileniyor" : `${kalanGun} gün sonra`}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+                <button onClick={() => onSil(k.id)} className="text-[#B24C34]/60 hover:text-[#B24C34]">🗑</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex gap-2 mb-2">
+        <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Servis adı"
+          className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8A5FBF]" />
+        <input value={tutar} onChange={(e) => setTutar(e.target.value)} inputMode="decimal" placeholder="₺/ay"
+          className="w-20 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8A5FBF]" />
+      </div>
+      <div className="flex gap-2">
+        <input value={gun} onChange={(e) => setGun(e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric"
+          placeholder="Yenileme günü (ör. 15)"
+          className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#8A5FBF]" />
+        <button onClick={ekle} className="rounded-lg px-3 text-white bg-[#8A5FBF] active:scale-95">+</button>
+      </div>
+    </div>
+  );
+}
+
+function AracGiderBolumu({ kalemler, onEkle, onSil }) {
+  const [ad, setAd] = useState("");
+  const [tutar, setTutar] = useState("");
+  const [kategori, setKategori] = useState(ARAC_KATEGORILERI[0].id);
+
+  const ekle = () => {
+    const t = parseFloat(tutar.replace(",", "."));
+    if (!t || t <= 0) return;
+    const katInfo = ARAC_KATEGORILERI.find((k) => k.id === kategori);
+    onEkle({ id: uid(), ad: ad.trim() || katInfo.label, tutar: t, kategori });
+    setAd(""); setTutar("");
+  };
+
+  const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+  const kategoriToplamlari = ARAC_KATEGORILERI.map((k) => ({
+    ...k, toplam: kalemler.filter((x) => x.kategori === k.id).reduce((s, x) => s + x.tutar, 0),
+  })).filter((k) => k.toplam > 0);
+
+  return (
+    <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2"><span>🚗</span><h3 className="font-semibold text-[#1B2430] tracking-tight">Araç Giderleri</h3></div>
+        <span className="font-mono text-sm font-semibold text-[#2F6E5C]">{tl(toplam)}</span>
+      </div>
+
+      {kategoriToplamlari.length > 0 && (
+        <div className="mb-4">
+          <div className="flex h-2.5 rounded-full overflow-hidden mb-2">
+            {kategoriToplamlari.map((k) => <div key={k.id} style={{ width: `${(k.toplam / toplam) * 100}%`, backgroundColor: k.renk }} />)}
+          </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            {kategoriToplamlari.map((k) => (
+              <span key={k.id} className="text-[11px] text-[#6B7280] flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: k.renk }} />
+                {k.label}: {tl(k.toplam)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2 mb-4 max-h-52 overflow-y-auto">
+        {kalemler.length === 0 && <p className="text-sm text-[#8A8272] italic">Henüz araç gideri eklenmedi.</p>}
+        {kalemler.map((k) => {
+          const katInfo = ARAC_KATEGORILERI.find((x) => x.id === k.kategori) || ARAC_KATEGORILERI[4];
+          return (
+            <div key={k.id} className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span style={{ color: katInfo.renk }}>{katInfo.emoji}</span>
+                <span className="text-[#1B2430]">{k.ad}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+                <button onClick={() => onSil(k.id)} className="text-[#B24C34]/60 hover:text-[#B24C34]">🗑</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 mb-2">
+        {ARAC_KATEGORILERI.map((k) => (
+          <button key={k.id} onClick={() => setKategori(k.id)} className="text-xs px-2.5 py-1 rounded-full border"
+            style={{ borderColor: k.renk, color: kategori === k.id ? "white" : k.renk, backgroundColor: kategori === k.id ? k.renk : "transparent" }}>
+            {k.label}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input value={ad} onChange={(e) => setAd(e.target.value)} placeholder="Not (opsiyonel)"
+          className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2F6E5C]" />
+        <input value={tutar} onChange={(e) => setTutar(e.target.value)} onKeyDown={(e) => e.key === "Enter" && ekle()}
+          inputMode="decimal" placeholder="₺"
+          className="w-24 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2F6E5C]" />
+        <button onClick={ekle} className="rounded-lg px-3 text-white bg-[#2F6E5C] active:scale-95">+</button>
+      </div>
+    </div>
+  );
+}
+
+function DokumBolumu({ gelirler, sabitGiderler, abonelikler, aracGiderleri }) {
+  const [ofset, setOfset] = useState(0);
+  const { etiket } = ayBilgisi(ofset);
+
+  const tumKalemler = [
+    ...gelirler.map((k) => ({ ...k, tip: "gelir" })),
+    ...sabitGiderler.map((k) => ({ ...k, tip: "gider" })),
+    ...abonelikler.map((k) => ({ ...k, tip: "gider" })),
+    ...aracGiderleri.map((k) => ({ ...k, tip: "gider" })),
+  ];
+  const tarihli = tumKalemler.filter((k) => k.gun).sort((a, b) => a.gun - b.gun);
+  const tarihsiz = tumKalemler.filter((k) => !k.gun);
+  const sirali = [...tarihli, ...tarihsiz];
+
+  let bakiye = 0;
+  const satirlar = sirali.map((k) => {
+    bakiye += k.tip === "gelir" ? k.tutar : -k.tutar;
+    return { ...k, bakiye };
+  });
+
+  const toplamGelir = gelirler.reduce((s, k) => s + k.tutar, 0);
+  const toplamGider = sabitGiderler.reduce((s, k) => s + k.tutar, 0) + abonelikler.reduce((s, k) => s + k.tutar, 0) + aracGiderleri.reduce((s, k) => s + k.tutar, 0);
+  const net = toplamGelir - toplamGider;
+
+  return (
+    <div className="space-y-5 pb-10">
+      <div className="rounded-2xl bg-[#1B2430] p-4 flex items-center justify-between">
+        <button onClick={() => setOfset((o) => o - 1)} className="text-[#8A93A3] hover:text-white p-1">‹</button>
+        <span className="font-serif text-lg font-semibold text-[#F1ECE1]">{etiket}</span>
+        <button onClick={() => setOfset((o) => o + 1)} className="text-[#8A93A3] hover:text-white p-1">›</button>
+      </div>
+
+      {ofset !== 0 && <button onClick={() => setOfset(0)} className="text-xs text-[#8A5FBF] underline underline-offset-2">Bu aya dön</button>}
+
+      <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+        {satirlar.length === 0 && <p className="text-sm text-[#8A8272] italic p-5">Henüz kalem eklenmedi.</p>}
+        {satirlar.map((k, i) => (
+          <div key={k.id + i} className="flex items-center justify-between px-4 py-3 border-b border-[#F1ECE1] last:border-0">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-[#F1ECE1] flex items-center justify-center text-xs font-semibold text-[#6B7280]">{k.gun ? k.gun : "—"}</div>
+              <div>
+                <p className="text-sm text-[#1B2430]">{k.ad}</p>
+                <p className="text-[11px] text-[#8A8272]">{k.gun ? `Her ayın ${k.gun}'i` : "Tarihsiz"}</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-mono text-sm font-medium" style={{ color: k.tip === "gelir" ? "#2F6E5C" : "#B24C34" }}>
+                {k.tip === "gelir" ? "+" : "−"}{tl(k.tutar)}
+              </p>
+              <p className="text-[11px] text-[#8A8272] font-mono">bakiye {tl(k.bakiye)}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl bg-[#F1ECE1] p-4 flex gap-3">
+        <div className="flex-1"><p className="text-xs text-[#6B7280]">Toplam Gelir</p><p className="font-mono text-sm font-semibold text-[#2F6E5C]">{tl(toplamGelir)}</p></div>
+        <div className="flex-1"><p className="text-xs text-[#6B7280]">Toplam Gider</p><p className="font-mono text-sm font-semibold text-[#B24C34]">{tl(toplamGider)}</p></div>
+        <div className="flex-1"><p className="text-xs text-[#6B7280]">Net</p><p className="font-mono text-sm font-semibold" style={{ color: net >= 0 ? "#C9A227" : "#E1786A" }}>{tl(net)}</p></div>
+      </div>
+      <p className="text-[11px] text-[#8A8272] leading-relaxed">Bu döküm, düzenli (tekrar eden) kalemlerine göre hesaplanır. Tekrar günü belirtmediğin kalemler her ayın toplamına dahil olur ama listede "Tarihsiz" görünür.</p>
+    </div>
+  );
+}
+
+function OzetKarti({ label, deger, renk, alt }) {
+  return (
+    <div className="rounded-2xl bg-[#1B2430] p-5 flex-1 min-w-[140px]">
+      <p className="text-xs uppercase tracking-wider text-[#8A93A3] mb-1">{label}</p>
+      <p className="text-2xl font-serif font-semibold tabular-nums" style={{ color: renk }}>{tl(deger)}</p>
+      {alt && <p className="text-xs text-[#8A93A3] mt-1">{alt}</p>}
+    </div>
+  );
+}
+
+function HesapKitap() {
+  const [sekme, setSekme] = useState("ozet");
+  const [gelirler, setGelirler] = useState([]);
+  const [sabitGiderler, setSabitGiderler] = useState([]);
+  const [abonelikler, setAbonelikler] = useState([]);
+  const [aracGiderleri, setAracGiderleri] = useState([]);
+  const [yukleniyor, setYukleniyor] = useState(true);
+
+  const [bakiye, setBakiye] = useState("15000");
+  const [faiz, setFaiz] = useState("3.99");
+  const [asgariYuzde, setAsgariYuzde] = useState("20");
+  const [vergiYuzde, setVergiYuzde] = useState("15");
+
+  useEffect(() => {
+    try {
+      const kayit = localStorage.getItem("hesap-kitap-veri");
+      if (kayit) {
+        const parsed = JSON.parse(kayit);
+        setGelirler(parsed.gelirler || []);
+        setSabitGiderler(parsed.sabitGiderler || []);
+        setAbonelikler(parsed.abonelikler || []);
+        setAracGiderleri(parsed.aracGiderleri || []);
+      }
+    } catch (e) {}
+    setYukleniyor(false);
+  }, []);
+
+  useEffect(() => {
+    if (yukleniyor) return;
+    localStorage.setItem("hesap-kitap-veri", JSON.stringify({ gelirler, sabitGiderler, abonelikler, aracGiderleri }));
+  }, [gelirler, sabitGiderler, abonelikler, aracGiderleri, yukleniyor]);
+
+  const toplamGelir = gelirler.reduce((s, k) => s + k.tutar, 0);
+  const toplamSabitGider = sabitGiderler.reduce((s, k) => s + k.tutar, 0);
+  const toplamAbonelik = abonelikler.reduce((s, k) => s + k.tutar, 0);
+  const toplamArac = aracGiderleri.reduce((s, k) => s + k.tutar, 0);
+  const toplamGider = toplamSabitGider + toplamAbonelik + toplamArac;
+  const net = toplamGelir - toplamGider;
+
+  const plan = useMemo(() => hesaplaAsgariOdemePlani({
+    bakiye: parseFloat(bakiye) || 0,
+    aylikFaizYuzde: parseFloat(faiz) || 0,
+    asgariYuzde: parseFloat(asgariYuzde) || 0,
+    tabanOdeme: 0,
+    vergiYuzde: parseFloat(vergiYuzde) || 0,
+  }), [bakiye, faiz, asgariYuzde, vergiYuzde]);
+
+  const grafikVerisi = plan.rows.filter((_, i) => i % Math.ceil(plan.rows.length / 40 || 1) === 0);
+
+  const sekmeler = [
+    { id: "ozet", label: "Özet" },
+    { id: "abonelik", label: "Abonelik" },
+    { id: "arac", label: "Araç" },
+    { id: "dokum", label: "Dökümler" },
+    { id: "kart", label: "Kredi Kartı" },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#F1ECE1] text-[#1B2430]">
+      <div className="bg-[#1B2430] px-5 pt-8 pb-16 rounded-b-[2rem]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-serif text-2xl font-semibold text-[#F1ECE1]">Hesap Kitap</h1>
+            <p className="text-sm text-[#8A93A3] mt-1">Gelirini, giderini, aboneliklerini ve kart borcunu tek yerden gör.</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-[#C9A227] text-xs font-medium whitespace-nowrap pt-1">
+            <span>📅</span><span>{bugunEtiketi()}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto -mt-10 px-4">
+        <div className="flex bg-white rounded-full p-1 shadow-md mb-5 overflow-x-auto">
+          {sekmeler.map((t) => (
+            <button key={t.id} onClick={() => setSekme(t.id)}
+              className={`flex-1 whitespace-nowrap px-2 py-2 rounded-full text-sm font-medium ${sekme === t.id ? "bg-[#1B2430] text-white" : "text-[#6B7280]"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {sekme === "ozet" && (
+          <div className="space-y-5 pb-10">
+            <div className="flex gap-3">
+              <OzetKarti label="Toplam Gelir" deger={toplamGelir} renk="#7FBFA6" />
+              <OzetKarti label="Toplam Gider" deger={toplamGider} renk="#E19E86" />
+            </div>
+            <OzetKarti label={net >= 0 ? "Ay Sonu Fazlan" : "Ay Sonu Açığın"} deger={net}
+              renk={net >= 0 ? "#C9A227" : "#E1786A"} alt={net >= 0 ? "Gelirin giderini karşılıyor." : "Giderin gelirini aşıyor."} />
+
+            <div className="rounded-2xl bg-white p-4 shadow-sm">
+              <p className="text-xs font-medium text-[#6B7280] mb-2">Gider Dağılımı</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between"><span className="text-[#4A4438]">Sabit Giderler</span><span className="font-mono text-[#B24C34]">{tl(toplamSabitGider)}</span></div>
+                <div className="flex justify-between"><span className="text-[#4A4438]">Abonelikler</span><span className="font-mono text-[#8A5FBF]">{tl(toplamAbonelik)}</span></div>
+                <div className="flex justify-between"><span className="text-[#4A4438]">Araç Giderleri</span><span className="font-mono text-[#2F6E5C]">{tl(toplamArac)}</span></div>
+              </div>
+            </div>
+
+            <KalemListesi baslik="Gelirler" renk="#2F6E5C" emoji="📈" kalemler={gelirler}
+              onEkle={(k) => setGelirler((g) => [...g, k])} onSil={(id) => setGelirler((g) => g.filter((x) => x.id !== id))} />
+            <KalemListesi baslik="Sabit Giderler" renk="#B24C34" emoji="📉" kalemler={sabitGiderler}
+              onEkle={(k) => setSabitGiderler((g) => [...g, k])} onSil={(id) => setSabitGiderler((g) => g.filter((x) => x.id !== id))} />
+          </div>
+        )}
+
+        {sekme === "abonelik" && (
+          <div className="pb-10">
+            <AbonelikBolumu kalemler={abonelikler} onEkle={(k) => setAbonelikler((a) => [...a, k])} onSil={(id) => setAbonelikler((a) => a.filter((x) => x.id !== id))} />
+          </div>
+        )}
+
+        {sekme === "arac" && (
+          <div className="pb-10">
+            <AracGiderBolumu kalemler={aracGiderleri} onEkle={(k) => setAracGiderleri((a) => [...a, k])} onSil={(id) => setAracGiderleri((a) => a.filter((x) => x.id !== id))} />
+          </div>
+        )}
+
+        {sekme === "dokum" && (
+          <DokumBolumu gelirler={gelirler} sabitGiderler={sabitGiderler} abonelikler={abonelikler} aracGiderleri={aracGiderleri} />
+        )}
+
+        {sekme === "kart" && (
+          <div className="space-y-5 pb-10">
+            <div className="rounded-2xl bg-[#F1ECE1] border border-[#D8D0BE] p-5">
+              <div className="flex items-center gap-2 mb-4"><span>💳</span><h3 className="font-semibold tracking-tight">Asgari Ödeme Hesaplayıcı</h3></div>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="text-xs text-[#6B7280]">Kart Bakiyesi (₺)
+                  <input value={bakiye} onChange={(e) => setBakiye(e.target.value)} inputMode="decimal"
+                    className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+                </label>
+                <label className="text-xs text-[#6B7280]">Aylık Faiz (%)
+                  <input value={faiz} onChange={(e) => setFaiz(e.target.value)} inputMode="decimal"
+                    className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+                </label>
+                <label className="text-xs text-[#6B7280]">Asgari Ödeme Oranı (%)
+                  <input value={asgariYuzde} onChange={(e) => setAsgariYuzde(e.target.value)} inputMode="decimal"
+                    className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+                </label>
+                <label className="text-xs text-[#6B7280]">KKDF+BSMV (%)
+                  <input value={vergiYuzde} onChange={(e) => setVergiYuzde(e.target.value)} inputMode="decimal"
+                    className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+                </label>
+              </div>
+              <p className="text-[11px] text-[#8A8272] mt-3 leading-relaxed">Oranlar bankandan bankaya değişir; güncel faiz, asgari ödeme yüzdesi ve vergi oranlarını kart ekstrenden veya bankandan teyit et.</p>
+            </div>
+
+            {plan.hicBitmiyor && (
+              <div className="flex gap-3 rounded-2xl bg-[#3A241D] p-4 text-[#F1ECE1]">
+                <span>⚠️</span>
+                <p className="text-sm leading-relaxed">Bu oranlarla asgari ödeme, o ayın faiz ve vergisini bile karşılamıyor. Bakiye hiç azalmaz, tam tersine büyür. Asgari ödeme oranını artırmadan veya ekstra ödeme yapmadan bu borç kapanmaz.</p>
+              </div>
+            )}
+
+            {!plan.hicBitmiyor && (
+              <React.Fragment>
+                <div className="rounded-2xl bg-[#1B2430] p-5">
+                  <p className="text-xs uppercase tracking-wider text-[#8A93A3] mb-1">Sadece Asgari Ödersen Toplam Faiz + Vergi</p>
+                  <p className="font-serif text-3xl font-semibold text-[#C9A227] tabular-nums">{tl(plan.toplamFaiz)}</p>
+                  <p className="text-xs text-[#8A93A3] mt-2">{plan.bitmedi ? "50 yılda bile kapanmıyor." : `${plan.aySayisi} ayda kapanır · toplam ödeme ${tl(plan.toplamOdeme)}`}</p>
+                </div>
+                <div className="rounded-2xl bg-white p-5 shadow-sm">
+                  <p className="text-sm font-semibold text-[#1B2430] mb-3">Faiz Sarmalı — Bakiye Zaman İçinde</p>
+                  <BorcGrafigi data={grafikVerisi} />
+                </div>
+              </React.Fragment>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BorcGrafigi({ data }) {
+  const w = 320, h = 160, pad = 28;
+  if (!data.length) return null;
+  const maxY = Math.max(...data.map((d) => d.bakiye), 1);
+  const maxX = Math.max(...data.map((d) => d.ay), 1);
+  const x = (ay) => pad + (ay / maxX) * (w - pad * 1.5);
+  const y = (bal) => h - pad - (bal / maxY) * (h - pad * 1.5);
+  const linePts = data.map((d) => `${x(d.ay)},${y(d.bakiye)}`).join(" ");
+  const areaPts = `${x(0)},${y(0)} ` + linePts + ` ${x(data[data.length - 1].ay)},${h - pad}`;
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-40">
+      <defs>
+        <linearGradient id="borcGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#B24C34" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#B24C34" stopOpacity="0.03" />
+        </linearGradient>
+      </defs>
+      <line x1={pad} y1={h - pad} x2={w - 6} y2={h - pad} stroke="#EDE7D8" strokeWidth="1" />
+      <line x1={pad} y1={6} x2={pad} y2={h - pad} stroke="#EDE7D8" strokeWidth="1" />
+      <polygon points={areaPts} fill="url(#borcGrad)" />
+      <polyline points={linePts} fill="none" stroke="#B24C34" strokeWidth="2" />
+      <text x={pad} y={h - 8} fontSize="9" fill="#8A8272">0. ay</text>
+      <text x={w - 30} y={h - 8} fontSize="9" fill="#8A8272">{maxX}. ay</text>
+      <text x={2} y={14} fontSize="9" fill="#8A8272">{Math.round(maxY / 1000)}b</text>
+    </svg>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<HesapKitap />);
+</script>
+</body>
+</html>
