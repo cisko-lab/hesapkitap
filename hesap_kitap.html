@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hesap Kitap - Finans Yönetimi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+    .font-serif { font-family: 'Fraunces', serif; }
+    .font-sans { font-family: 'Inter', sans-serif; }
+  </style>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+</head>
+<body class="bg-[#F1ECE1] text-[#1B2430]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    // Storage Polyfill (Standard localStorage fallback)
+    if (!window.storage) {
+      window.storage = {
+        get: async (key) => {
+          try {
+            const val = localStorage.getItem(key);
+            return val ? { value: val } : null;
+          } catch (e) {
+            return null;
+          }
+        },
+        set: async (key, val) => {
+          try {
+            localStorage.setItem(key, val);
+          } catch (e) {}
+        }
+      };
+    }
+
+    const { useState, useEffect, useMemo } = React;
+    const { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = window.Recharts || {};
+
+    // Helper SVG Icon component
+    const createIcon = (svgPaths) => ({ size = 18, color, className = "", style = {}, ...props }) => (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={color || "currentColor"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        style={style}
+        {...props}
+      >
+        {svgPaths}
+      </svg>
+    );
+
+    const Plus = createIcon(<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>);
+    const Trash2 = createIcon(<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></>);
+    const TrendingUp = createIcon(<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></>);
+    const TrendingDown = createIcon(<><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></>);
+    const AlertTriangle = createIcon(<><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></>);
+    const Wallet = createIcon(<><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></>);
+    const Repeat = createIcon(<><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></>);
+    const Car = createIcon(<><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H7.5a1 1 0 0 0-.8.4L4 11l-5.16.86A1 1 0 0 0-2 12.85V16h3"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></>);
+    const Fuel = createIcon(<><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 9h8"/><path d="M14 22V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v18"/><path d="M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 5"/></>);
+    const ShieldCheck = createIcon(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></>);
+    const Wrench = createIcon(<><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></>);
+    const ParkingCircle = createIcon(<><circle cx="12" cy="12" r="10"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/></>);
+    const MoreHorizontal = createIcon(<><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></>);
+    const Clock = createIcon(<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>);
+    const CalendarDays = createIcon(<><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></>);
+    const ChevronLeft = createIcon(<><polyline points="15 18 9 12 15 6"/></>);
+    const ChevronRight = createIcon(<><polyline points="9 18 15 12 9 6"/></>);
+    const ChevronUp = createIcon(<><polyline points="18 15 12 9 6 15"/></>);
+    const ChevronDown = createIcon(<><polyline points="6 9 12 15 18 9"/></>);
+    const Landmark = createIcon(<><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7 12 2"/></>);
+    const CreditCard = createIcon(<><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></>);
+
+    // ---------- yardımcı fonksiyonlar ----------
+    const tl = (n) =>
+      (isFinite(n) ? n : 0).toLocaleString("tr-TR", {
+        style: "currency",
+        currency: "TRY",
+        maximumFractionDigits: 0,
+      });
+
+    const uid = () => Math.random().toString(36).slice(2, 10);
+
+    const AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylul", "Ekim", "Kasım", "Aralık"];
+
+    function bugunEtiketi() {
+      const d = new Date();
+      return d.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", weekday: "long" });
+    }
+
+    function ayBilgisi(ofset) {
+      const bugun = new Date();
+      const d = new Date(bugun.getFullYear(), bugun.getMonth() + ofset, 1);
+      return { yil: d.getFullYear(), ayIndex: d.getMonth(), etiket: `${AY_ADLARI[d.getMonth()]} ${d.getFullYear()}` };
+    }
+
+    function hesaplaAsgariOdemePlani({ bakiye, aylikFaizYuzde, asgariYuzde, tabanOdeme, vergiYuzde }) {
+      const r = aylikFaizYuzde / 100;
+      const m = asgariYuzde / 100;
+      const vergi = vergiYuzde / 100;
+      let bal = bakiye;
+      const rows = [];
+      let toplamFaiz = 0;
+      let toplamOdeme = 0;
+      let ay = 0;
+      const MAX_AY = 600;
+      let hicBitmiyor = false;
+
+      while (bal > 1 && ay < MAX_AY) {
+        ay += 1;
+        const faiz = bal * r;
+        const faizVeVergi = faiz * (1 + vergi);
+        let odeme = Math.max(bal * m, tabanOdeme);
+        odeme = Math.min(odeme, bal + faizVeVergi);
+
+        if (odeme <= faizVeVergi + 0.01) {
+          hicBitmiyor = true;
+          rows.push({ ay, bakiye: Math.round(bal), faiz: Math.round(faizVeVergi), odeme: Math.round(odeme) });
+          break;
+        }
+
+        const anaPara = odeme - faizVeVergi;
+        bal = bal + faizVeVergi - odeme;
+        toplamFaiz += faizVeVergi;
+        toplamOdeme += odeme;
+
+        rows.push({
+          ay,
+          bakiye: Math.max(Math.round(bal), 0),
+          faiz: Math.round(faizVeVergi),
+          odeme: Math.round(odeme),
+          anaPara: Math.round(anaPara),
+        });
+      }
+
+      return {
+        rows,
+        toplamFaiz: Math.round(toplamFaiz),
+        toplamOdeme: Math.round(toplamOdeme),
+        aySayisi: ay,
+        hicBitmiyor,
+        bitmedi: ay >= MAX_AY && bal > 1,
+      };
+    }
+
+    function sonrakiTekrarGunSayisi(gun) {
+      if (!gun) return null;
+      const bugun = new Date();
+      let hedef = new Date(bugun.getFullYear(), bugun.getMonth(), gun);
+      if (hedef < new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate())) {
+        hedef = new Date(bugun.getFullYear(), bugun.getMonth() + 1, gun);
+      }
+      return Math.round((hedef - new Date(bugun.getFullYear(), bugun.getMonth(), bugun.getDate())) / 86400000);
+    }
+
+    const BANKALAR = [
+      "Ziraat Bankası",
+      "İş Bankası",
+      "Garanti BBVA",
+      "Akbank",
+      "Yapı Kredi",
+      "Halkbank",
+      "VakıfBank",
+      "Denizbank",
+      "QNB",
+      "TEB",
+    ];
+
+    const ARAC_KATEGORILERI = [
+      { id: "yakit", label: "Yakıt", renk: "#C9A227", ikon: Fuel },
+      { id: "sigorta", label: "Sigorta", renk: "#2F6E5C", ikon: ShieldCheck },
+      { id: "bakim", label: "Bakım/Servis", renk: "#6B7280", ikon: Wrench },
+      { id: "otopark", label: "Otopark/Geçiş", renk: "#8A5FBF", ikon: ParkingCircle },
+      { id: "diger", label: "Diğer", renk: "#B24C34", ikon: MoreHorizontal },
+    ];
+
+    const POPULER_ABONELIKLER = [
+      { ad: "Netflix", renk: "#B2333B" },
+      { ad: "Spotify", renk: "#2F8F5B" },
+      { ad: "YouTube Premium", renk: "#C4302B" },
+      { ad: "Disney+", renk: "#3E5C9A" },
+      { ad: "Apple Music", renk: "#C9457A" },
+      { ad: "Amazon Prime", renk: "#3E7B9A" },
+    ];
+
+    function KalemListesi({ baslik, renk, kalemler, onEkle, onSil, ikon: Ikon }) {
+      const [ad, setAd] = useState("");
+      const [tutar, setTutar] = useState("");
+      const [gun, setGun] = useState("");
+
+      const ekle = () => {
+        const t = parseFloat(tutar.replace(",", "."));
+        if (!ad.trim() || !t || t <= 0) return;
+        onEkle({ id: uid(), ad: ad.trim(), tutar: t, gun: gun ? parseInt(gun, 10) : null });
+        setAd("");
+        setTutar("");
+        setGun("");
+      };
+
+      const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+
+      return (
+        <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Ikon size={18} style={{ color: renk }} />
+              <h3 className="font-semibold text-[#1B2430] tracking-tight">{baslik}</h3>
+            </div>
+            <span className="font-mono text-sm font-semibold" style={{ color: renk }}>
+              {tl(toplam)}
+            </span>
+          </div>
+
+          <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+            {kalemler.length === 0 && (
+              <p className="text-sm text-[#8A8272] italic">Henüz kalem eklenmedi.</p>
+            )}
+            {kalemler.map((k) => (
+              <div
+                key={k.id}
+                className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 text-sm"
+              >
+                <div>
+                  <span className="text-[#1B2430]">{k.ad}</span>
+                  {k.gun && (
+                    <span className="ml-2 text-[11px] text-[#8A8272]">· her ayın {k.gun}'i</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+                  <button
+                    onClick={() => onSil(k.id)}
+                    aria-label={`${k.ad} kalemini sil`}
+                    className="text-[#B24C34]/60 hover:text-[#B24C34] transition-colors"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2 mb-2">
+            <input
+              value={ad}
+              onChange={(e) => setAd(e.target.value)}
+              placeholder="Ör. Maaş, Kira"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+            />
+            <input
+              value={tutar}
+              onChange={(e) => setTutar(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ekle()}
+              inputMode="decimal"
+              placeholder="₺"
+              className="w-24 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={gun}
+              onChange={(e) => setGun(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              inputMode="numeric"
+              placeholder="Her ay tekrar günü (opsiyonel, ör. 1)"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+            />
+            <button
+              onClick={ekle}
+              aria-label="Ekle"
+              className="rounded-lg px-3 text-white transition-transform active:scale-95 flex items-center justify-center"
+              style={{ backgroundColor: renk }}
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function AbonelikBolumu({ kalemler, onEkle, onSil }) {
+      const [ad, setAd] = useState("");
+      const [tutar, setTutar] = useState("");
+      const [gun, setGun] = useState("");
+
+      const ekle = (hazirAd) => {
+        const t = parseFloat(tutar.replace(",", "."));
+        const nihaiAd = hazirAd || ad.trim();
+        if (!nihaiAd || !t || t <= 0) return;
+        onEkle({ id: uid(), ad: nihaiAd, tutar: t, gun: gun ? parseInt(gun, 10) : null });
+        setAd("");
+        setTutar("");
+        setGun("");
+      };
+
+      const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+      const siraliKalemler = [...kalemler].sort((a, b) => {
+        const ga = sonrakiTekrarGunSayisi(a.gun);
+        const gb = sonrakiTekrarGunSayisi(b.gun);
+        if (ga === null) return 1;
+        if (gb === null) return -1;
+        return ga - gb;
+      });
+
+      return (
+        <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Repeat size={18} className="text-[#8A5FBF]" />
+              <h3 className="font-semibold text-[#1B2430] tracking-tight">Abonelikler</h3>
+            </div>
+            <span className="font-mono text-sm font-semibold text-[#8A5FBF]">{tl(toplam)}/ay</span>
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {POPULER_ABONELIKLER.map((p) => (
+              <button
+                key={p.ad}
+                onClick={() => setAd(p.ad)}
+                className="text-xs px-3 py-1.5 rounded-full border transition-colors"
+                style={{
+                  borderColor: p.renk,
+                  color: ad === p.ad ? "white" : p.renk,
+                  backgroundColor: ad === p.ad ? p.renk : "transparent",
+                }}
+              >
+                {p.ad}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2 mb-4 max-h-52 overflow-y-auto">
+            {siraliKalemler.length === 0 && (
+              <p className="text-sm text-[#8A8272] italic">Henüz abonelik eklenmedi.</p>
+            )}
+            {siraliKalemler.map((k) => {
+              const kalanGun = sonrakiTekrarGunSayisi(k.gun);
+              const yakinda = kalanGun !== null && kalanGun <= 7;
+              return (
+                <div
+                  key={k.id}
+                  className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 text-sm"
+                >
+                  <div>
+                    <span className="text-[#1B2430]">{k.ad}</span>
+                    {kalanGun !== null && (
+                      <span
+                        className={`ml-2 inline-flex items-center gap-1 text-[11px] ${
+                          yakinda ? "text-[#B24C34] font-medium" : "text-[#8A8272]"
+                        }`}
+                      >
+                        <Clock size={10} />
+                        {kalanGun === 0 ? "bugün yenileniyor" : `${kalanGun} gün sonra`}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+                    <button
+                      onClick={() => onSil(k.id)}
+                      aria-label={`${k.ad} aboneliğini sil`}
+                      className="text-[#B24C34]/60 hover:text-[#B24C34] transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-2 mb-2">
+            <input
+              value={ad}
+              onChange={(e) => setAd(e.target.value)}
+              placeholder="Servis adı"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#8A5FBF]"
+            />
+            <input
+              value={tutar}
+              onChange={(e) => setTutar(e.target.value)}
+              inputMode="decimal"
+              placeholder="₺/ay"
+              className="w-20 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#8A5FBF]"
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={gun}
+              onChange={(e) => setGun(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              inputMode="numeric"
+              placeholder="Yenileme günü (ör. 15)"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#8A5FBF]"
+            />
+            <button
+              onClick={() => ekle()}
+              aria-label="Ekle"
+              className="rounded-lg px-3 text-white bg-[#8A5FBF] transition-transform active:scale-95 flex items-center justify-center"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function AracGiderBolumu({ kalemler, onEkle, onSil }) {
+      const [ad, setAd] = useState("");
+      const [tutar, setTutar] = useState("");
+      const [kategori, setKategori] = useState(ARAC_KATEGORILERI[0].id);
+
+      const ekle = () => {
+        const t = parseFloat(tutar.replace(",", "."));
+        if (!t || t <= 0) return;
+        const katInfo = ARAC_KATEGORILERI.find((k) => k.id === kategori);
+        onEkle({ id: uid(), ad: ad.trim() || katInfo.label, tutar: t, kategori });
+        setAd("");
+        setTutar("");
+      };
+
+      const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+      const kategoriToplamlari = ARAC_KATEGORILERI.map((k) => ({
+        ...k,
+        toplam: kalemler.filter((x) => x.kategori === k.id).reduce((s, x) => s + x.tutar, 0),
+      })).filter((k) => k.toplam > 0);
+
+      return (
+        <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Car size={18} className="text-[#2F6E5C]" />
+              <h3 className="font-semibold text-[#1B2430] tracking-tight">Araç Giderleri</h3>
+            </div>
+            <span className="font-mono text-sm font-semibold text-[#2F6E5C]">{tl(toplam)}</span>
+          </div>
+
+          {kategoriToplamlari.length > 0 && (
+            <div className="mb-4">
+              <div className="flex h-2.5 rounded-full overflow-hidden mb-2">
+                {kategoriToplamlari.map((k) => (
+                  <div
+                    key={k.id}
+                    style={{ width: `${(k.toplam / toplam) * 100}%`, backgroundColor: k.renk }}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                {kategoriToplamlari.map((k) => (
+                  <span key={k.id} className="text-[11px] text-[#6B7280] flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: k.renk }} />
+                    {k.label}: {tl(k.toplam)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2 mb-4 max-h-52 overflow-y-auto">
+            {kalemler.length === 0 && (
+              <p className="text-sm text-[#8A8272] italic">Henüz araç gideri eklenmedi.</p>
+            )}
+            {kalemler.map((k) => {
+              const katInfo = ARAC_KATEGORILERI.find((x) => x.id === k.kategori) || ARAC_KATEGORILERI[4];
+              const KatIkon = katInfo.ikon;
+              return (
+                <div
+                  key={k.id}
+                  className="flex items-center justify-between bg-white/60 rounded-lg px-3 py-2 text-sm"
+                >
+                  <div className="flex items-center gap-2">
+                    <KatIkon size={13} style={{ color: katInfo.renk }} />
+                    <span className="text-[#1B2430]">{k.ad}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+                    <button
+                      onClick={() => onSil(k.id)}
+                      aria-label={`${k.ad} kalemini sil`}
+                      className="text-[#B24C34]/60 hover:text-[#B24C34] transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {ARAC_KATEGORILERI.map((k) => (
+              <button
+                key={k.id}
+                onClick={() => setKategori(k.id)}
+                className="text-xs px-2.5 py-1 rounded-full border transition-colors"
+                style={{
+                  borderColor: k.renk,
+                  color: kategori === k.id ? "white" : k.renk,
+                  backgroundColor: kategori === k.id ? k.renk : "transparent",
+                }}
+              >
+                {k.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={ad}
+              onChange={(e) => setAd(e.target.value)}
+              placeholder="Not (opsiyonel)"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#2F6E5C]"
+            />
+            <input
+              value={tutar}
+              onChange={(e) => setTutar(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && ekle()}
+              inputMode="decimal"
+              placeholder="₺"
+              className="w-24 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#2F6E5C]"
+            />
+            <button
+              onClick={ekle}
+              aria-label="Ekle"
+              className="rounded-lg px-3 text-white bg-[#2F6E5C] transition-transform active:scale-95 flex items-center justify-center"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function KrediBolumu({ kalemler, onEkle, onSil }) {
+      const [banka, setBanka] = useState("");
+      const [ad, setAd] = useState("");
+      const [taksitTutari, setTaksitTutari] = useState("");
+      const [gun, setGun] = useState("");
+      const [kalanTaksit, setKalanTaksit] = useState("");
+
+      const ekle = () => {
+        const t = parseFloat(taksitTutari.replace(",", "."));
+        if (!banka || !t || t <= 0) return;
+        onEkle({
+          id: uid(),
+          banka,
+          ad: ad.trim() || "Kredi",
+          tutar: t,
+          gun: gun ? parseInt(gun, 10) : null,
+          kalanTaksit: kalanTaksit ? parseInt(kalanTaksit, 10) : null,
+        });
+        setBanka("");
+        setAd("");
+        setTaksitTutari("");
+        setGun("");
+        setKalanTaksit("");
+      };
+
+      const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+      const sirali = [...kalemler].sort((a, b) => {
+        const ga = sonrakiTekrarGunSayisi(a.gun);
+        const gb = sonrakiTekrarGunSayisi(b.gun);
+        if (ga === null) return 1;
+        if (gb === null) return -1;
+        return ga - gb;
+      });
+
+      return (
+        <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Landmark size={18} className="text-[#3E5C9A]" />
+              <h3 className="font-semibold text-[#1B2430] tracking-tight">Krediler</h3>
+            </div>
+            <span className="font-mono text-sm font-semibold text-[#3E5C9A]">{tl(toplam)}/ay</span>
+          </div>
+
+          <div className="space-y-2 mb-4 max-h-56 overflow-y-auto">
+            {sirali.length === 0 && (
+              <p className="text-sm text-[#8A8272] italic">Henüz kredi eklenmedi.</p>
+            )}
+            {sirali.map((k) => {
+              const kalanGun = sonrakiTekrarGunSayisi(k.gun);
+              const yakinda = kalanGun !== null && kalanGun <= 7;
+              return (
+                <div key={k.id} className="bg-white/60 rounded-lg px-3 py-2 text-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[#1B2430] font-medium">{k.banka}</span>
+                      <span className="text-[#8A8272]"> · {k.ad}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[#4A4438]">{tl(k.tutar)}</span>
+                      <button
+                        onClick={() => onSil(k.id)}
+                        aria-label={`${k.banka} kredisini sil`}
+                        className="text-[#B24C34]/60 hover:text-[#B24C34] transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1">
+                    {kalanGun !== null && (
+                      <span
+                        className={`inline-flex items-center gap-1 text-[11px] ${
+                          yakinda ? "text-[#B24C34] font-medium" : "text-[#8A8272]"
+                        }`}
+                      >
+                        <Clock size={10} />
+                        {kalanGun === 0 ? "bugün ödeme günü" : `${kalanGun} gün sonra ödeme`}
+                      </span>
+                    )}
+                    {k.kalanTaksit && (
+                      <span className="text-[11px] text-[#8A8272]">· {k.kalanTaksit} taksit kaldı</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {BANKALAR.map((b) => (
+              <button
+                key={b}
+                onClick={() => setBanka(b)}
+                className="text-xs px-2.5 py-1 rounded-full border transition-colors"
+                style={{
+                  borderColor: "#3E5C9A",
+                  color: banka === b ? "white" : "#3E5C9A",
+                  backgroundColor: banka === b ? "#3E5C9A" : "transparent",
+                }}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+          <input
+            value={banka}
+            onChange={(e) => setBanka(e.target.value)}
+            placeholder="Banka adı (yukarıdan seç veya yaz)"
+            className="w-full mb-2 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#3E5C9A]"
+          />
+          <div className="flex gap-2 mb-2">
+            <input
+              value={ad}
+              onChange={(e) => setAd(e.target.value)}
+              placeholder="Ör. İhtiyaç Kredisi, Taşıt Kredisi"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#3E5C9A]"
+            />
+            <input
+              value={taksitTutari}
+              onChange={(e) => setTaksitTutari(e.target.value)}
+              inputMode="decimal"
+              placeholder="Aylık taksit ₺"
+              className="w-28 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#3E5C9A]"
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={gun}
+              onChange={(e) => setGun(e.target.value.replace(/\D/g, "").slice(0, 2))}
+              inputMode="numeric"
+              placeholder="Ödeme günü (ör. 10)"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#3E5C9A]"
+            />
+            <input
+              value={kalanTaksit}
+              onChange={(e) => setKalanTaksit(e.target.value.replace(/\D/g, "").slice(0, 3))}
+              inputMode="numeric"
+              placeholder="Kalan taksit (opsiyonel)"
+              className="flex-1 min-w-0 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm text-[#1B2430] focus:outline-none focus:ring-2 focus:ring-[#3E5C9A]"
+            />
+            <button
+              onClick={ekle}
+              aria-label="Ekle"
+              className="rounded-lg px-3 text-white bg-[#3E5C9A] transition-transform active:scale-95 flex items-center justify-center"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function KrediKartiSatiri({ kart, onSil, acik, onToggle }) {
+      const plan = useMemo(
+        () =>
+          hesaplaAsgariOdemePlani({
+            bakiye: kart.bakiye,
+            aylikFaizYuzde: kart.faiz,
+            asgariYuzde: kart.asgariYuzde,
+            tabanOdeme: 0,
+            vergiYuzde: kart.vergiYuzde,
+          }),
+        [kart.bakiye, kart.faiz, kart.asgariYuzde, kart.vergiYuzde]
+      );
+      const grafikVerisi = plan.rows.filter((_, i) => i % Math.ceil(plan.rows.length / 60 || 1) === 0);
+      const kalanGun = sonrakiTekrarGunSayisi(kart.gun);
+      const yakinda = kalanGun !== null && kalanGun <= 7;
+
+      return (
+        <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+          <button onClick={onToggle} className="w-full text-left p-4 flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <CreditCard size={15} className="text-[#C9A227]" />
+                <span className="font-semibold text-[#1B2430] text-sm">{kart.banka}</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-mono text-xs text-[#4A4438]">{tl(kart.bakiye)} bakiye</span>
+                {kalanGun !== null && (
+                  <span
+                    className={`inline-flex items-center gap-1 text-[11px] ${
+                      yakinda ? "text-[#B24C34] font-medium" : "text-[#8A8272]"
+                    }`}
+                  >
+                    <Clock size={10} />
+                    {kalanGun === 0 ? "bugün son ödeme" : `${kalanGun} gün sonra son ödeme`}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSil(kart.id);
+                }}
+                className="text-[#B24C34]/60 hover:text-[#B24C34] transition-colors p-1"
+              >
+                <Trash2 size={14} />
+              </span>
+              {acik ? <ChevronUp size={16} className="text-[#6B7280]" /> : <ChevronDown size={16} className="text-[#6B7280]" />}
+            </div>
+          </button>
+
+          {acik && (
+            <div className="px-4 pb-4 space-y-3 border-t border-[#F1ECE1] pt-3">
+              {plan.hicBitmiyor ? (
+                <div className="flex gap-2 rounded-xl bg-[#3A241D] p-3 text-[#F1ECE1]">
+                  <AlertTriangle size={16} className="shrink-0 text-[#E1786A]" />
+                  <p className="text-xs leading-relaxed">
+                    Bu oranlarla asgari ödeme faiz ve vergiyi karşılamıyor, bakiye hiç azalmaz.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="rounded-xl bg-[#1B2430] p-4">
+                    <p className="text-[11px] uppercase tracking-wider text-[#8A93A3] mb-1">
+                      Sadece Asgari Ödersen Toplam Faiz + Vergi
+                    </p>
+                    <p className="font-serif text-2xl font-semibold text-[#C9A227] tabular-nums">
+                      {tl(plan.toplamFaiz)}
+                    </p>
+                    <p className="text-[11px] text-[#8A93A3] mt-1">
+                      {plan.bitmedi ? "50 yılda bile kapanmıyor." : `${plan.aySayisi} ayda kapanır`}
+                    </p>
+                  </div>
+                  {AreaChart && (
+                    <div className="h-40 -ml-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={grafikVerisi}>
+                          <defs>
+                            <linearGradient id={`grad-${kart.id}`} x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#B24C34" stopOpacity={0.55} />
+                              <stop offset="100%" stopColor="#B24C34" stopOpacity={0.03} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#EDE7D8" />
+                          <XAxis dataKey="ay" tick={{ fontSize: 10, fill: "#8A8272" }} />
+                          <YAxis
+                            tick={{ fontSize: 10, fill: "#8A8272" }}
+                            tickFormatter={(v) => `${Math.round(v / 1000)}b`}
+                            width={30}
+                          />
+                          <Tooltip formatter={(v) => tl(v)} labelFormatter={(l) => `${l}. ay`} contentStyle={{ borderRadius: 10, border: "1px solid #EDE7D8", fontSize: 12 }} />
+                          <Area type="monotone" dataKey="bakiye" stroke="#B24C34" strokeWidth={2} fill={`url(#grad-${kart.id})`} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-[#8A8272]">
+                <span>Aylık faiz: %{kart.faiz}</span>
+                <span>Asgari oran: %{kart.asgariYuzde}</span>
+                <span>KKDF+BSMV: %{kart.vergiYuzde}</span>
+                {kart.gun && <span>Ödeme günü: {kart.gun}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function KartlarBolumu({ kartlar, onEkle, onSil }) {
+      const [banka, setBanka] = useState("");
+      const [bakiye, setBakiye] = useState("");
+      const [faiz, setFaiz] = useState("3.99");
+      const [asgariYuzde, setAsgariYuzde] = useState("20");
+      const [vergiYuzde, setVergiYuzde] = useState("15");
+      const [gun, setGun] = useState("");
+      const [acikId, setAcikId] = useState(null);
+
+      const ekle = () => {
+        const b = parseFloat(bakiye.replace(",", "."));
+        if (!banka || !b || b <= 0) return;
+        const yeniKart = {
+          id: uid(),
+          banka,
+          bakiye: b,
+          faiz: parseFloat(faiz) || 0,
+          asgariYuzde: parseFloat(asgariYuzde) || 0,
+          vergiYuzde: parseFloat(vergiYuzde) || 0,
+          gun: gun ? parseInt(gun, 10) : null,
+        };
+        onEkle(yeniKart);
+        setAcikId(yeniKart.id);
+        setBanka("");
+        setBakiye("");
+        setGun("");
+      };
+
+      const sirali = [...kartlar].sort((a, b) => {
+        const ga = sonrakiTekrarGunSayisi(a.gun);
+        const gb = sonrakiTekrarGunSayisi(b.gun);
+        if (ga === null) return 1;
+        if (gb === null) return -1;
+        return ga - gb;
+      });
+
+      return (
+        <div className="space-y-3">
+          {sirali.length === 0 && (
+            <p className="text-sm text-[#8A8272] italic px-1">Henüz kredi kartı eklenmedi.</p>
+          )}
+          {sirali.map((k) => (
+            <KrediKartiSatiri
+              key={k.id}
+              kart={k}
+              onSil={onSil}
+              acik={acikId === k.id}
+              onToggle={() => setAcikId(acikId === k.id ? null : k.id)}
+            />
+          ))}
+
+          <div className="rounded-2xl bg-[#F1ECE1] border border-[#D8D0BE] p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet size={18} className="text-[#C9A227]" />
+              <h3 className="font-semibold tracking-tight">Yeni Kredi Kartı Ekle</h3>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {BANKALAR.map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setBanka(b)}
+                  className="text-xs px-2.5 py-1 rounded-full border transition-colors"
+                  style={{
+                    borderColor: "#C9A227",
+                    color: banka === b ? "white" : "#C9A227",
+                    backgroundColor: banka === b ? "#C9A227" : "transparent",
+                  }}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+            <input
+              value={banka}
+              onChange={(e) => setBanka(e.target.value)}
+              placeholder="Banka adı (yukarıdan seç veya yaz)"
+              className="w-full mb-3 rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-xs text-[#6B7280]">
+                Kart Bakiyesi (₺)
+                <input
+                  value={bakiye}
+                  onChange={(e) => setBakiye(e.target.value)}
+                  inputMode="decimal"
+                  className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+                />
+              </label>
+              <label className="text-xs text-[#6B7280]">
+                Son Ödeme Günü
+                <input
+                  value={gun}
+                  onChange={(e) => setGun(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                  inputMode="numeric"
+                  placeholder="Ör. 12"
+                  className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+                />
+              </label>
+              <label className="text-xs text-[#6B7280]">
+                Aylık Faiz (%)
+                <input
+                  value={faiz}
+                  onChange={(e) => setFaiz(e.target.value)}
+                  inputMode="decimal"
+                  className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+                />
+              </label>
+              <label className="text-xs text-[#6B7280]">
+                Asgari Ödeme Oranı (%)
+                <input
+                  value={asgariYuzde}
+                  onChange={(e) => setAsgariYuzde(e.target.value)}
+                  inputMode="decimal"
+                  className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+                />
+              </label>
+              <label className="text-xs text-[#6B7280] col-span-2">
+                KKDF+BSMV (%)
+                <input
+                  value={vergiYuzde}
+                  onChange={(e) => setVergiYuzde(e.target.value)}
+                  inputMode="decimal"
+                  className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+                />
+              </label>
+            </div>
+            <p className="text-[11px] text-[#8A8272] mt-3 leading-relaxed">
+              Oranlar bankandan bankaya değişir; güncel faiz, asgari ödeme yüzdesi ve vergi
+              oranlarını kart ekstrenden veya bankandan teyit et.
+            </p>
+            <button
+              onClick={ekle}
+              className="mt-3 w-full rounded-lg py-2.5 text-white font-medium bg-[#C9A227] transition-transform active:scale-95 flex items-center justify-center gap-2"
+            >
+              <Plus size={16} /> Kartı Ekle
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    function DokumBolumu({ gelirler, sabitGiderler, abonelikler, aracGiderleri, krediler }) {
+      const [ofset, setOfset] = useState(0);
+      const { etiket } = ayBilgisi(ofset);
+
+      const tumKalemler = [
+        ...gelirler.map((k) => ({ ...k, tip: "gelir" })),
+        ...sabitGiderler.map((k) => ({ ...k, tip: "gider" })),
+        ...abonelikler.map((k) => ({ ...k, tip: "gider" })),
+        ...aracGiderleri.map((k) => ({ ...k, tip: "gider" })),
+        ...krediler.map((k) => ({ ...k, ad: `${k.banka} · ${k.ad}`, tip: "gider" })),
+      ];
+
+      const tarihli = tumKalemler.filter((k) => k.gun).sort((a, b) => a.gun - b.gun);
+      const tarihsiz = tumKalemler.filter((k) => !k.gun);
+      const sirali = [...tarihli, ...tarihsiz];
+
+      let bakiye = 0;
+      const satirlar = sirali.map((k) => {
+        bakiye += k.tip === "gelir" ? k.tutar : -k.tutar;
+        return { ...k, bakiye };
+      });
+
+      const toplamGelir = gelirler.reduce((s, k) => s + k.tutar, 0);
+      const toplamGider =
+        sabitGiderler.reduce((s, k) => s + k.tutar, 0) +
+        abonelikler.reduce((s, k) => s + k.tutar, 0) +
+        aracGiderleri.reduce((s, k) => s + k.tutar, 0) +
+        krediler.reduce((s, k) => s + k.tutar, 0);
+      const net = toplamGelir - toplamGider;
+
+      return (
+        <div className="space-y-5 pb-10">
+          <div className="rounded-2xl bg-[#1B2430] p-4 flex items-center justify-between">
+            <button onClick={() => setOfset((o) => o - 1)} className="text-[#8A93A3] hover:text-white p-1">
+              <ChevronLeft size={20} />
+            </button>
+            <span className="font-serif text-lg font-semibold text-[#F1ECE1]">{etiket}</span>
+            <button onClick={() => setOfset((o) => o + 1)} className="text-[#8A93A3] hover:text-white p-1">
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          {ofset !== 0 && (
+            <button
+              onClick={() => setOfset(0)}
+              className="text-xs text-[#8A5FBF] underline underline-offset-2"
+            >
+              Bu aya dön
+            </button>
+          )}
+
+          <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
+            {satirlar.length === 0 && (
+              <p className="text-sm text-[#8A8272] italic p-5">Henüz kalem eklenmedi.</p>
+            )}
+            {satirlar.map((k, i) => (
+              <div
+                key={k.id + i}
+                className="flex items-center justify-between px-4 py-3 border-b border-[#F1ECE1] last:border-0"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#F1ECE1] flex items-center justify-center text-xs font-semibold text-[#6B7280]">
+                    {k.gun ? k.gun : "—"}
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#1B2430]">{k.ad}</p>
+                    <p className="text-[11px] text-[#8A8272]">
+                      {k.gun ? `Her ayın ${k.gun}'i` : "Tarihsiz"}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p
+                    className="font-mono text-sm font-medium"
+                    style={{ color: k.tip === "gelir" ? "#2F6E5C" : "#B24C34" }}
+                  >
+                    {k.tip === "gelir" ? "+" : "−"}
+                    {tl(k.tutar)}
+                  </p>
+                  <p className="text-[11px] text-[#8A8272] font-mono">bakiye {tl(k.bakiye)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-2xl bg-[#F1ECE1] p-4 flex gap-3">
+            <div className="flex-1">
+              <p className="text-xs text-[#6B7280]">Toplam Gelir</p>
+              <p className="font-mono text-sm font-semibold text-[#2F6E5C]">{tl(toplamGelir)}</p>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-[#6B7280]">Toplam Gider</p>
+              <p className="font-mono text-sm font-semibold text-[#B24C34]">{tl(toplamGider)}</p>
+            </div>
+            <div className="flex-1">
+              <p className="text-xs text-[#6B7280]">Net</p>
+              <p className="font-mono text-sm font-semibold" style={{ color: net >= 0 ? "#C9A227" : "#E1786A" }}>
+                {tl(net)}
+              </p>
+            </div>
+          </div>
+          <p className="text-[11px] text-[#8A8272] px-1 leading-relaxed">
+            Bu döküm, düzenli (tekrar eden) kalemlerine göre hesaplanır. Tekrar günü belirtmediğin
+            kalemler her ayın toplamına dahil olur ama listede "Tarihsiz" görünür.
+          </p>
+        </div>
+      );
+    }
+
+    function OzetKarti({ label, deger, renk, alt }) {
+      return (
+        <div className="rounded-2xl bg-[#1B2430] p-5 flex-1 min-w-[140px]">
+          <p className="text-xs uppercase tracking-wider text-[#8A93A3] mb-1">{label}</p>
+          <p className="text-2xl font-serif font-semibold tabular-nums" style={{ color: renk }}>
+            {tl(deger)}
+          </p>
+          {alt && <p className="text-xs text-[#8A93A3] mt-1">{alt}</p>}
+        </div>
+      );
+    }
+
+    function HesapKitap() {
+      const [sekme, setSekme] = useState("ozet");
+      const [gelirler, setGelirler] = useState([]);
+      const [sabitGiderler, setSabitGiderler] = useState([]);
+      const [abonelikler, setAbonelikler] = useState([]);
+      const [aracGiderleri, setAracGiderleri] = useState([]);
+      const [krediler, setKrediler] = useState([]);
+      const [krediKartlari, setKrediKartlari] = useState([]);
+      const [yukleniyor, setYukleniyor] = useState(true);
+
+      useEffect(() => {
+        (async () => {
+          try {
+            const kayit = await window.storage.get("hesap-kitap:veri");
+            if (kayit) {
+              const parsed = JSON.parse(kayit.value);
+              setGelirler(parsed.gelirler || []);
+              setSabitGiderler(parsed.sabitGiderler || parsed.giderler || []);
+              setAbonelikler(parsed.abonelikler || []);
+              setAracGiderleri(parsed.aracGiderleri || []);
+              setKrediler(parsed.krediler || []);
+              setKrediKartlari(parsed.krediKartlari || []);
+            }
+          } catch (e) {
+          } finally {
+            setYukleniyor(false);
+          }
+        })();
+      }, []);
+
+      useEffect(() => {
+        if (yukleniyor) return;
+        window.storage
+          .set(
+            "hesap-kitap:veri",
+            JSON.stringify({ gelirler, sabitGiderler, abonelikler, aracGiderleri, krediler, krediKartlari })
+          )
+          .catch(() => {});
+      }, [gelirler, sabitGiderler, abonelikler, aracGiderleri, krediler, krediKartlari, yukleniyor]);
+
+      const toplamGelir = gelirler.reduce((s, k) => s + k.tutar, 0);
+      const toplamSabitGider = sabitGiderler.reduce((s, k) => s + k.tutar, 0);
+      const toplamAbonelik = abonelikler.reduce((s, k) => s + k.tutar, 0);
+      const toplamArac = aracGiderleri.reduce((s, k) => s + k.tutar, 0);
+      const toplamKredi = krediler.reduce((s, k) => s + k.tutar, 0);
+      const toplamGider = toplamSabitGider + toplamAbonelik + toplamArac + toplamKredi;
+      const net = toplamGelir - toplamGider;
+
+      const sekmeler = [
+        { id: "ozet", label: "Özet" },
+        { id: "abonelik", label: "Abonelik" },
+        { id: "arac", label: "Araç" },
+        { id: "krediler", label: "Krediler" },
+        { id: "kart", label: "Kredi Kartı" },
+        { id: "dokum", label: "Dökümler" },
+      ];
+
+      return (
+        <div className="min-h-screen bg-[#F1ECE1] font-sans text-[#1B2430]">
+          <div className="bg-[#1B2430] px-5 pt-8 pb-16 rounded-b-[2rem]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="font-serif text-2xl font-semibold text-[#F1ECE1]">Hesap Kitap</h1>
+                <p className="text-sm text-[#8A93A3] mt-1">Gelirini, giderini, aboneliklerini ve kart borcunu tek yerden gör.</p>
+              </div>
+              <div className="flex items-center gap-1.5 text-[#C9A227] text-xs font-medium whitespace-nowrap pt-1">
+                <CalendarDays size={14} />
+                <span>{bugunEtiketi()}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-md mx-auto -mt-10 px-4">
+            <div className="flex bg-white rounded-full p-1 shadow-md mb-5 overflow-x-auto">
+              {sekmeler.map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setSekme(t.id)}
+                  className={`flex-1 whitespace-nowrap px-2 py-2 rounded-full text-sm font-medium transition-colors ${
+                    sekme === t.id ? "bg-[#1B2430] text-white" : "text-[#6B7280]"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {sekme === "ozet" && (
+              <div className="space-y-5 pb-10">
+                <div className="flex gap-3">
+                  <OzetKarti label="Toplam Gelir" deger={toplamGelir} renk="#7FBFA6" />
+                  <OzetKarti label="Toplam Gider" deger={toplamGider} renk="#E19E86" />
+                </div>
+                <OzetKarti
+                  label={net >= 0 ? "Ay Sonu Fazlan" : "Ay Sonu Açığın"}
+                  deger={net}
+                  renk={net >= 0 ? "#C9A227" : "#E1786A"}
+                  alt={net >= 0 ? "Gelirin giderini karşılıyor." : "Giderin gelirini aşıyor."}
+                />
+
+                <div className="rounded-2xl bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-[#6B7280] mb-2">Gider Dağılımı</p>
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[#4A4438]">Sabit Giderler</span>
+                      <span className="font-mono text-[#B24C34]">{tl(toplamSabitGider)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#4A4438]">Abonelikler</span>
+                      <span className="font-mono text-[#8A5FBF]">{tl(toplamAbonelik)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#4A4438]">Araç Giderleri</span>
+                      <span className="font-mono text-[#2F6E5C]">{tl(toplamArac)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[#4A4438]">Kredi Taksitleri</span>
+                      <span className="font-mono text-[#3E5C9A]">{tl(toplamKredi)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <KalemListesi
+                  baslik="Gelirler"
+                  renk="#2F6E5C"
+                  ikon={TrendingUp}
+                  kalemler={gelirler}
+                  onEkle={(k) => setGelirler((g) => [...g, k])}
+                  onSil={(id) => setGelirler((g) => g.filter((x) => x.id !== id))}
+                />
+                <KalemListesi
+                  baslik="Sabit Giderler"
+                  renk="#B24C34"
+                  ikon={TrendingDown}
+                  kalemler={sabitGiderler}
+                  onEkle={(k) => setSabitGiderler((g) => [...g, k])}
+                  onSil={(id) => setSabitGiderler((g) => g.filter((x) => x.id !== id))}
+                />
+              </div>
+            )}
+
+            {sekme === "abonelik" && (
+              <div className="pb-10">
+                <AbonelikBolumu
+                  kalemler={abonelikler}
+                  onEkle={(k) => setAbonelikler((a) => [...a, k])}
+                  onSil={(id) => setAbonelikler((a) => a.filter((x) => x.id !== id))}
+                />
+              </div>
+            )}
+
+            {sekme === "arac" && (
+              <div className="pb-10">
+                <AracGiderBolumu
+                  kalemler={aracGiderleri}
+                  onEkle={(k) => setAracGiderleri((a) => [...a, k])}
+                  onSil={(id) => setAracGiderleri((a) => a.filter((x) => x.id !== id))}
+                />
+              </div>
+            )}
+
+            {sekme === "krediler" && (
+              <div className="pb-10">
+                <KrediBolumu
+                  kalemler={krediler}
+                  onEkle={(k) => setKrediler((g) => [...g, k])}
+                  onSil={(id) => setKrediler((g) => g.filter((x) => x.id !== id))}
+                />
+              </div>
+            )}
+
+            {sekme === "kart" && (
+              <div className="pb-10">
+                <KartlarBolumu
+                  kartlar={krediKartlari}
+                  onEkle={(k) => setKrediKartlari((g) => [...g, k])}
+                  onSil={(id) => setKrediKartlari((g) => g.filter((x) => x.id !== id))}
+                />
+              </div>
+            )}
+
+            {sekme === "dokum" && (
+              <DokumBolumu
+                gelirler={gelirler}
+                sabitGiderler={sabitGiderler}
+                abonelikler={abonelikler}
+                aracGiderleri={aracGiderleri}
+                krediler={krediler}
+              />
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<HesapKitap />);
+  </script>
+</body>
+</html>
