@@ -193,6 +193,87 @@ function sonrakiTekrarGunSayisi(gun) {
 
 const BANKALAR = ["Ziraat Bankası","İş Bankası","Garanti BBVA","Akbank","Yapı Kredi","Halkbank","VakıfBank","Denizbank","QNB","TEB"];
 
+// ---------- tarayıcı içinde PDF okuma (Claude'a ihtiyaç duymadan) ----------
+let pdfjsYuklemeSozu = null;
+function pdfjsYukle() {
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (pdfjsYuklemeSozu) return pdfjsYuklemeSozu;
+  pdfjsYuklemeSozu = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = () => reject(new Error("PDF okuyucu yüklenemedi"));
+    document.head.appendChild(script);
+  });
+  return pdfjsYuklemeSozu;
+}
+
+async function pdfMetniCikar(dosya) {
+  const pdfjsLib = await pdfjsYukle();
+  const arrayBuffer = await dosya.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  let metin = "";
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const sayfa = await pdf.getPage(i);
+    const icerik = await sayfa.getTextContent();
+    metin += icerik.items.map((o) => o.str).join(" ") + "\n";
+  }
+  return metin;
+}
+
+function turkceSayiCoz(str) {
+  if (!str) return null;
+  let s = str.trim().replace(/[₺TL\s]/gi, "");
+  if (/,\d{1,2}$/.test(s)) { s = s.replace(/\./g, "").replace(",", "."); } else { s = s.replace(/,/g, ""); }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function ekstreVerisiCikar(metin) {
+  const sonuc = { banka: null, bakiye: null, asgariOdemeYuzdesi: null, faizYuzdesi: null, sonOdemeGunu: null };
+  const buyukMetin = metin.toLocaleUpperCase("tr-TR");
+  for (const b of BANKALAR) {
+    const ilkKelime = b.split(" ")[0].toLocaleUpperCase("tr-TR");
+    if (buyukMetin.includes(ilkKelime)) { sonuc.banka = b; break; }
+  }
+
+  const dene = (desenler) => {
+    for (const d of desenler) {
+      const e = metin.match(d);
+      if (e) return e[1];
+    }
+    return null;
+  };
+
+  sonuc.bakiye = turkceSayiCoz(dene([
+    /d[öo]nem\s*borcu\s*[:\-]?\s*([\d.,]+)/i,
+    /toplam\s*bor[çc]\s*[:\-]?\s*([\d.,]+)/i,
+    /hesap\s*[öo]zeti\s*borcu\s*[:\-]?\s*([\d.,]+)/i,
+    /[öo]denecek\s*tutar\s*[:\-]?\s*([\d.,]+)/i,
+    /g[üu]ncel\s*bor[çc]\s*[:\-]?\s*([\d.,]+)/i,
+  ]));
+
+  const asgariTutar = turkceSayiCoz(dene([/asgari\s*[öo]deme\s*tutar[ıi]\s*[:\-]?\s*([\d.,]+)/i]));
+  sonuc.asgariOdemeYuzdesi = turkceSayiCoz(dene([/asgari\s*[öo]deme\s*oran[ıi]\s*[:\-]?\s*%?\s*([\d.,]+)/i]));
+  if (!sonuc.asgariOdemeYuzdesi && asgariTutar && sonuc.bakiye) {
+    sonuc.asgariOdemeYuzdesi = Math.round((asgariTutar / sonuc.bakiye) * 100);
+  }
+
+  sonuc.faizYuzdesi = turkceSayiCoz(dene([
+    /ayl[ıi]k\s*akdi\s*faiz\s*oran[ıi]\s*[:\-]?\s*%?\s*([\d.,]+)/i,
+    /faiz\s*oran[ıi]\s*[:\-]?\s*%?\s*([\d.,]+)/i,
+  ]));
+
+  const tarihE = metin.match(/son\s*[öo]deme\s*tarihi\s*[:\-]?\s*(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})/i);
+  if (tarihE) sonuc.sonOdemeGunu = parseInt(tarihE[1], 10);
+
+  return sonuc;
+}
+
+
 const ARAC_KATEGORILERI = [
   { id: "yakit", label: "Yakıt", renk: "#C9A227", emoji: "⛽" },
   { id: "sigorta", label: "Sigorta", renk: "#2F6E5C", emoji: "🛡️" },
@@ -628,37 +709,19 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
     if (!dosya) return;
     setPdfHata(""); setPdfBasarili(false); setPdfYukleniyor(true);
     try {
-      const base64 = await new Promise((res, rej) => {
-        const r = new FileReader();
-        r.onload = () => res(r.result.split(",")[1]);
-        r.onerror = () => rej(new Error("Dosya okunamadı"));
-        r.readAsDataURL(dosya);
-      });
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-6",
-          max_tokens: 500,
-          messages: [{
-            role: "user",
-            content: [
-              { type: "document", source: { type: "base64", media_type: "application/pdf", data: base64 } },
-              { type: "text", text: "Bu bir kredi kartı ekstresi. Şu bilgileri çıkar ve SADECE geçerli JSON döndür, başka hiçbir metin ekleme: {\"banka\": string|null, \"bakiye\": number|null, \"asgariOdemeYuzdesi\": number|null, \"faizYuzdesi\": number|null, \"sonOdemeGunu\": number|null}. bakiye: dönem borcu, sadece sayı. sonOdemeGunu: ayın kaçıncı günü (1-31). Bulamadığın alanlara null yaz." },
-            ],
-          }],
-        }),
-      });
-      const data = await response.json();
-      const metinBlogu = (data.content || []).find((b) => b.type === "text");
-      if (!metinBlogu) throw new Error("Yanıt okunamadı");
-      const cikti = JSON.parse(metinBlogu.text.replace(/```json|```/g, "").trim());
-      if (cikti.banka) setBanka(cikti.banka);
-      if (cikti.bakiye) setBakiye(String(cikti.bakiye));
-      if (cikti.asgariOdemeYuzdesi) setAsgariYuzde(String(cikti.asgariOdemeYuzdesi));
-      if (cikti.faizYuzdesi) setFaiz(String(cikti.faizYuzdesi));
-      if (cikti.sonOdemeGunu) setGun(String(cikti.sonOdemeGunu));
-      setPdfBasarili(true);
+      const metin = await pdfMetniCikar(dosya);
+      const cikti = ekstreVerisiCikar(metin);
+      let bulunan = 0;
+      if (cikti.banka) { setBanka(cikti.banka); bulunan++; }
+      if (cikti.bakiye) { setBakiye(String(cikti.bakiye)); bulunan++; }
+      if (cikti.asgariOdemeYuzdesi) { setAsgariYuzde(String(Math.round(cikti.asgariOdemeYuzdesi))); bulunan++; }
+      if (cikti.faizYuzdesi) { setFaiz(String(cikti.faizYuzdesi)); bulunan++; }
+      if (cikti.sonOdemeGunu) { setGun(String(cikti.sonOdemeGunu)); bulunan++; }
+      if (bulunan === 0) {
+        setPdfHata("Ekstrede tanıdık bir alan bulunamadı. Bilgileri elle girebilirsin.");
+      } else {
+        setPdfBasarili(true);
+      }
     } catch (err) {
       setPdfHata("Ekstre okunamadı. Bilgileri aşağıdan elle girebilirsin.");
     } finally {
@@ -702,7 +765,6 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
         </label>
         {pdfBasarili && <p className="text-[11px] text-[#2F6E5C] font-medium mb-3">Ekstreden okunan bilgiler aşağıya dolduruldu — kaydetmeden önce kontrol et.</p>}
         {pdfHata && <p className="text-[11px] text-[#B24C34] mb-3">{pdfHata}</p>}
-        <p className="text-[11px] text-[#8A8272] mb-3">Bu otomatik doldurma yalnızca Claude sohbeti üzerinden kullanırken çalışır.</p>
 
         <div className="flex flex-wrap gap-1.5 mb-3">
           {BANKALAR.map((b) => (
