@@ -29,8 +29,8 @@
   .min-h-screen{min-height:100vh;} .min-w-0{min-width:0;} .min-w-\[140px\]{min-width:140px;}
   .max-w-md{max-width:28rem;} .mx-auto{margin-left:auto;margin-right:auto;}
   .overflow-hidden{overflow:hidden;} .overflow-x-auto{overflow-x:auto;} .overflow-y-auto{overflow-y:auto;}
-  .w-2{width:0.5rem;} .w-9{width:2.25rem;} .w-20{width:5rem;} .w-24{width:6rem;} .w-full{width:100%;}
-  .h-2{height:0.5rem;} .h-2\.5{height:0.625rem;} .h-9{height:2.25rem;} .h-40{height:10rem;}
+  .w-2{width:0.5rem;} .w-1\.5{width:0.375rem;} .w-9{width:2.25rem;} .w-20{width:5rem;} .w-24{width:6rem;} .w-full{width:100%;}
+  .h-2{height:0.5rem;} .h-2\.5{height:0.625rem;} .h-1\.5{height:0.375rem;} .h-9{height:2.25rem;} .h-40{height:10rem;}
   .max-h-48{max-height:12rem;} .max-h-52{max-height:13rem;}
   .text-right{text-align:right;}
   .whitespace-nowrap{white-space:nowrap;}
@@ -219,7 +219,18 @@ async function pdfMetniCikar(dosya) {
   for (let i = 1; i <= pdf.numPages; i++) {
     const sayfa = await pdf.getPage(i);
     const icerik = await sayfa.getTextContent();
-    metin += icerik.items.map((o) => o.str).join(" ") + "\n";
+    let sonY = null;
+    let satir = "";
+    for (const item of icerik.items) {
+      const y = item.transform[5];
+      if (sonY !== null && Math.abs(y - sonY) > 2) {
+        metin += satir.trim() + "\n";
+        satir = "";
+      }
+      satir += item.str + " ";
+      sonY = y;
+    }
+    metin += satir.trim() + "\n";
   }
   return metin;
 }
@@ -230,6 +241,46 @@ function turkceSayiCoz(str) {
   if (/,\d{1,2}$/.test(s)) { s = s.replace(/\./g, "").replace(",", "."); } else { s = s.replace(/,/g, ""); }
   const n = parseFloat(s);
   return isNaN(n) ? null : n;
+}
+
+const HARCAMA_KATEGORILERI = [
+  { id: "yakit", label: "Yakıt", renk: "#C9A227", anahtarlar: ["SHELL", "BP ", "OPET", "PETROL OFIS", "PETROL OFİS", " TOTAL ", "AYTEMIZ", "ALFA GAZ", "GO ENERJI", "AKARYAKIT"] },
+  { id: "market", label: "Market", renk: "#2F6E5C", anahtarlar: ["MIGROS", "CARREFOUR", "BIM ", "A101", "ŞOK ", "SOK MARKET", "METRO GROSS", "MACROCENTER"] },
+  { id: "abonelik", label: "Abonelik", renk: "#8A5FBF", anahtarlar: ["NETFLIX", "SPOTIFY", "YOUTUBE", "DISNEY", "APPLE.COM", "AMAZON PRIME", "STORYTEL", "BLUTV", "EXXEN", "GAIN"] },
+  { id: "yeme-icme", label: "Yeme-İçme", renk: "#B24C34", anahtarlar: ["YEMEKSEPETI", "GETIR YEMEK", "STARBUCKS", "CAFE", "KAHVE", "RESTORAN", "LOKANTA", "BURGER", "PIZZA", "DONER", "DÖNER"] },
+  { id: "giyim", label: "Giyim", renk: "#3E5C9A", anahtarlar: ["LCWAIKIKI", "LC WAIKIKI", "KOTON", "ZARA", "H&M", "DEFACTO", "MAVI ", "PULL AND BEAR", "BERSHKA"] },
+  { id: "fatura", label: "Fatura", renk: "#6B7280", anahtarlar: ["TURKCELL", "VODAFONE", "TURK TELEKOM", "TÜRK TELEKOM", "ELEKTRIK", "ELEKTRİK", "DOGALGAZ", "DOĞALGAZ", "SU IDARESI", "SU İDARESİ", "ASKI", "IGDAS", "İGDAŞ"] },
+  { id: "eticaret", label: "E-ticaret", renk: "#C9457A", anahtarlar: ["TRENDYOL", "HEPSIBURADA", "N11", "AMAZON.COM.TR", "ÇIÇEKSEPETI", "ÇİÇEKSEPETİ"] },
+  { id: "diger", label: "Diğer", renk: "#8A8272", anahtarlar: [] },
+];
+
+function harcamaKategorisiBul(aciklama) {
+  const buyuk = aciklama.toLocaleUpperCase("tr-TR");
+  for (const kat of HARCAMA_KATEGORILERI) {
+    if (kat.anahtarlar.some((a) => buyuk.includes(a))) return kat.id;
+  }
+  return "diger";
+}
+
+function islemSatirlariCikar(metin) {
+  const atlaDeseni = /toplam|asgari|bor[çc]|limit\b|genel\b|sayfa\b|devir\b|hesap\s*[öo]zeti|kesim\s*tarihi|son\s*[öo]deme|faiz\s*oran|kkdf|bsmv|vergi|puan|ekstre\s*no|m[üu][şs]teri\s*no|kart\s*no|iban/i;
+  const satirDeseni = /^(?:\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}\s+)?(.{3,60}?)\s+([\d.]{1,3}(?:[.,]\d{3})*(?:[.,]\d{2}))\s*(?:TL|₺)?\s*$/i;
+
+  const islemler = [];
+  const satirlar = metin.split("\n");
+  for (const satirHam of satirlar) {
+    const satir = satirHam.trim();
+    if (!satir || satir.length < 6) continue;
+    if (atlaDeseni.test(satir)) continue;
+    const e = satir.match(satirDeseni);
+    if (!e) continue;
+    const aciklama = e[1].trim().replace(/\s{2,}/g, " ");
+    const tutar = turkceSayiCoz(e[2]);
+    if (!tutar || tutar <= 0 || tutar > 500000) continue;
+    if (!/[a-zA-ZğüşıöçĞÜŞİÖÇ]{3,}/.test(aciklama)) continue;
+    islemler.push({ id: uid(), aciklama, tutar, kategori: harcamaKategorisiBul(aciklama) });
+  }
+  return islemler;
 }
 
 function ekstreVerisiCikar(metin) {
@@ -269,6 +320,8 @@ function ekstreVerisiCikar(metin) {
 
   const tarihE = metin.match(/son\s*[öo]deme\s*tarihi\s*[:\-]?\s*(\d{1,2})[.\/](\d{1,2})[.\/](\d{2,4})/i);
   if (tarihE) sonuc.sonOdemeGunu = parseInt(tarihE[1], 10);
+
+  sonuc.islemler = islemSatirlariCikar(metin);
 
   return sonuc;
 }
@@ -671,9 +724,68 @@ function KrediKartiSatiri({ kart, onSil, acik, onToggle, onDuzenleBaslat }) {
             <span>KKDF+BSMV: %{kart.vergiYuzde}</span>
             {kart.gun && <span>Ödeme günü: {kart.gun}</span>}
           </div>
+
+          <HarcamaRaporu islemler={kart.islemler} />
+
           <button onClick={() => onDuzenleBaslat(kart)} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-[#1B2430] border border-[#D8D0BE] active:scale-95">
             ✏️ Bu Kartı Düzenle
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HarcamaRaporu({ islemler }) {
+  const [acik, setAcik] = useState(false);
+
+  if (!islemler || islemler.length === 0) {
+    return (
+      <div className="rounded-xl bg-[#F1ECE1] p-3">
+        <p className="text-[11px] text-[#8A8272] leading-relaxed">Bu kart için henüz harcama raporu yok. Ekstreyi PDF olarak yükleyip düzenlersen işlemler otomatik olarak buraya kategorilere ayrılarak eklenir.</p>
+      </div>
+    );
+  }
+
+  const toplam = islemler.reduce((s, k) => s + k.tutar, 0);
+  const kategoriToplamlari = HARCAMA_KATEGORILERI.map((k) => ({
+    ...k, toplam: islemler.filter((x) => x.kategori === k.id).reduce((s, x) => s + x.tutar, 0),
+  })).filter((k) => k.toplam > 0);
+  const siraliIslemler = [...islemler].sort((a, b) => b.tutar - a.tutar);
+
+  return (
+    <div className="rounded-xl bg-[#F1ECE1] p-3">
+      <button onClick={() => setAcik((a) => !a)} className="w-full flex items-center justify-between">
+        <span className="text-xs font-semibold text-[#1B2430]">📊 Harcama Raporu · {islemler.length} işlem</span>
+        <span className="text-[#6B7280]">{acik ? "▲" : "▼"}</span>
+      </button>
+
+      <div className="flex h-2 rounded-full overflow-hidden mt-2 mb-2">
+        {kategoriToplamlari.map((k) => <div key={k.id} style={{ width: `${(k.toplam / toplam) * 100}%`, backgroundColor: k.renk }} />)}
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {kategoriToplamlari.map((k) => (
+          <span key={k.id} className="text-[11px] text-[#6B7280] flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: k.renk }} />
+            {k.label}: {tl(k.toplam)}
+          </span>
+        ))}
+      </div>
+
+      {acik && (
+        <div className="mt-3 space-y-1 max-h-56 overflow-y-auto">
+          {siraliIslemler.map((islem) => {
+            const kat = HARCAMA_KATEGORILERI.find((k) => k.id === islem.kategori) || HARCAMA_KATEGORILERI[HARCAMA_KATEGORILERI.length - 1];
+            return (
+              <div key={islem.id} className="flex items-center justify-between bg-white/60 rounded-lg px-2.5 py-1.5 text-[11px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: kat.renk }} />
+                  <span className="text-[#1B2430]">{islem.aciklama}</span>
+                </div>
+                <span className="font-mono text-[#4A4438]">{tl(islem.tutar)}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -692,16 +804,18 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
   const [pdfYukleniyor, setPdfYukleniyor] = useState(false);
   const [pdfHata, setPdfHata] = useState("");
   const [pdfBasarili, setPdfBasarili] = useState(false);
+  const [islemler, setIslemler] = useState([]);
 
   const formuTemizle = () => {
     setBanka(""); setBakiye(""); setFaiz("3.99"); setAsgariYuzde("20"); setVergiYuzde("15"); setGun(""); setDuzenlenenId(null);
-    setPdfHata(""); setPdfBasarili(false);
+    setPdfHata(""); setPdfBasarili(false); setIslemler([]);
   };
 
   const duzenlemeyeBasla = (kart) => {
     setDuzenlenenId(kart.id); setBanka(kart.banka); setBakiye(String(kart.bakiye));
     setFaiz(String(kart.faiz)); setAsgariYuzde(String(kart.asgariYuzde)); setVergiYuzde(String(kart.vergiYuzde));
     setGun(kart.gun ? String(kart.gun) : "");
+    setIslemler(kart.islemler || []);
   };
 
   const ekstreYukle = async (e) => {
@@ -717,6 +831,7 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
       if (cikti.asgariOdemeYuzdesi) { setAsgariYuzde(String(Math.round(cikti.asgariOdemeYuzdesi))); bulunan++; }
       if (cikti.faizYuzdesi) { setFaiz(String(cikti.faizYuzdesi)); bulunan++; }
       if (cikti.sonOdemeGunu) { setGun(String(cikti.sonOdemeGunu)); bulunan++; }
+      if (cikti.islemler && cikti.islemler.length > 0) { setIslemler(cikti.islemler); bulunan++; }
       if (bulunan === 0) {
         setPdfHata("Ekstrede tanıdık bir alan bulunamadı. Bilgileri elle girebilirsin.");
       } else {
@@ -737,6 +852,7 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
       id: duzenlenenId || uid(), banka, bakiye: b,
       faiz: parseFloat(faiz) || 0, asgariYuzde: parseFloat(asgariYuzde) || 0, vergiYuzde: parseFloat(vergiYuzde) || 0,
       gun: gun ? parseInt(gun, 10) : null,
+      islemler,
     };
     if (duzenlenenId) { onGuncelle(veri); setAcikId(veri.id); } else { onEkle(veri); setAcikId(veri.id); }
     formuTemizle();
@@ -763,7 +879,7 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
           <input type="file" accept="application/pdf" className="hidden" onChange={ekstreYukle} disabled={pdfYukleniyor} />
           {pdfYukleniyor ? <>📄 Ekstre okunuyor...</> : <>⬆️ Ekstreyi PDF olarak yükle, otomatik doldursun</>}
         </label>
-        {pdfBasarili && <p className="text-[11px] text-[#2F6E5C] font-medium mb-3">Ekstreden okunan bilgiler aşağıya dolduruldu — kaydetmeden önce kontrol et.</p>}
+        {pdfBasarili && <p className="text-[11px] text-[#2F6E5C] font-medium mb-3">Ekstreden okunan bilgiler aşağıya dolduruldu{islemler.length > 0 ? ` · ${islemler.length} işlem bulundu` : ""} — kaydetmeden önce kontrol et.</p>}
         {pdfHata && <p className="text-[11px] text-[#B24C34] mb-3">{pdfHata}</p>}
 
         <div className="flex flex-wrap gap-1.5 mb-3">
