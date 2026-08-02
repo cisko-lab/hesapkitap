@@ -111,6 +111,7 @@
   .active\:scale-95:active{transform:scale(0.95);}
   button{transition:transform 0.1s ease,background-color 0.15s ease,color 0.15s ease;}
   .bg-white\/10{background-color:rgba(255,255,255,0.1);}
+  .bg-\[\#C9A227\]\/10{background-color:rgba(201,162,39,0.1);}
   .flex-col{flex-direction:column;}
   .items-end{align-items:flex-end;}
   .hidden{display:none;}
@@ -246,7 +247,8 @@ function turkceSayiCoz(str) {
 
 const HARCAMA_KATEGORILERI = [
   { id: "yakit", label: "Yakıt", renk: "#C9A227", anahtarlar: ["SHELL", "BP ", "OPET", "PETROL OFIS", "PETROL OFİS", " TOTAL ", "AYTEMIZ", "ALFA GAZ", "GO ENERJI", "AKARYAKIT"] },
-  { id: "market", label: "Market", renk: "#2F6E5C", anahtarlar: ["MIGROS", "CARREFOUR", "BIM ", "A101", "ŞOK ", "SOK MARKET", "METRO GROSS", "MACROCENTER"] },
+  { id: "arac-gideri", label: "Araç Giderleri", renk: "#2F6E5C", anahtarlar: [] },
+  { id: "market", label: "Market", renk: "#7A6BB0", anahtarlar: ["MIGROS", "CARREFOUR", "BIM ", "A101", "ŞOK ", "SOK MARKET", "METRO GROSS", "MACROCENTER"] },
   { id: "abonelik", label: "Abonelik", renk: "#8A5FBF", anahtarlar: ["NETFLIX", "SPOTIFY", "YOUTUBE", "DISNEY", "APPLE.COM", "AMAZON PRIME", "STORYTEL", "BLUTV", "EXXEN", "GAIN"] },
   { id: "yeme-icme", label: "Yeme-İçme", renk: "#B24C34", anahtarlar: ["YEMEKSEPETI", "GETIR YEMEK", "STARBUCKS", "CAFE", "KAHVE", "RESTORAN", "LOKANTA", "BURGER", "PIZZA", "DONER", "DÖNER"] },
   { id: "giyim", label: "Giyim", renk: "#3E5C9A", anahtarlar: ["LCWAIKIKI", "LC WAIKIKI", "KOTON", "ZARA", "H&M", "DEFACTO", "MAVI ", "PULL AND BEAR", "BERSHKA"] },
@@ -254,6 +256,8 @@ const HARCAMA_KATEGORILERI = [
   { id: "eticaret", label: "E-ticaret", renk: "#C9457A", anahtarlar: ["TRENDYOL", "HEPSIBURADA", "N11", "AMAZON.COM.TR", "ÇIÇEKSEPETI", "ÇİÇEKSEPETİ"] },
   { id: "diger", label: "Diğer", renk: "#8A8272", anahtarlar: [] },
 ];
+
+const ARAC_SENKRON_KATEGORILERI = ["yakit", "arac-gideri"];
 
 function harcamaKategorisiBul(aciklama) {
   const buyuk = aciklama.toLocaleUpperCase("tr-TR");
@@ -361,6 +365,72 @@ const POPULER_ABONELIKLER = [
   { ad: "Apple Music", renk: "#C9457A" },
   { ad: "Amazon Prime", renk: "#3E7B9A" },
 ];
+
+function VadeliHesapHesaplayici({ onEkle }) {
+  const [acik, setAcik] = useState(false);
+  const [anapara, setAnapara] = useState("");
+  const [yillikOran, setYillikOran] = useState("");
+  const [gunSayisi, setGunSayisi] = useState("30");
+  const [stopaj, setStopaj] = useState("0");
+
+  const anaparaN = parseFloat(anapara.replace(",", ".")) || 0;
+  const oranN = parseFloat(yillikOran.replace(",", ".")) || 0;
+  const gunN = parseInt(gunSayisi, 10) || 0;
+  const stopajN = parseFloat(stopaj.replace(",", ".")) || 0;
+
+  const brutGetiri = anaparaN * (oranN / 100) * (gunN / 365);
+  const netGetiri = brutGetiri * (1 - stopajN / 100);
+
+  const ekle = () => {
+    if (!netGetiri || netGetiri <= 0) return;
+    onEkle({ id: uid(), ad: "Vadeli Hesap Getirisi", tutar: Math.round(netGetiri), gun: null });
+  };
+
+  return (
+    <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+      <button onClick={() => setAcik((a) => !a)} className="w-full flex items-center justify-between">
+        <div className="flex items-center gap-2"><span>🐷</span><h3 className="font-semibold text-[#1B2430] tracking-tight">Vadeli Hesap Getirisi Hesapla</h3></div>
+        <span className="text-[#6B7280]">{acik ? "▲" : "▼"}</span>
+      </button>
+      {!acik && <p className="text-[11px] text-[#8A8272] mt-1 leading-relaxed">Maaşını günlük faizli/vadeli hesapta tutuyorsan, ne kadar getiri sağlayacağını hesaplayıp gelirlerine ekleyebilirsin.</p>}
+
+      {acik && (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="text-xs text-[#6B7280]">Anapara (₺)
+              <input value={anapara} onChange={(e) => setAnapara(e.target.value)} inputMode="decimal"
+                className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+            </label>
+            <label className="text-xs text-[#6B7280]">Yıllık Faiz Oranı (%)
+              <input value={yillikOran} onChange={(e) => setYillikOran(e.target.value)} inputMode="decimal"
+                className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+            </label>
+            <label className="text-xs text-[#6B7280]">Vade (gün)
+              <input value={gunSayisi} onChange={(e) => setGunSayisi(e.target.value.replace(/\D/g, "").slice(0, 3))} inputMode="numeric"
+                className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+            </label>
+            <label className="text-xs text-[#6B7280]">Stopaj (%)
+              <input value={stopaj} onChange={(e) => setStopaj(e.target.value)} inputMode="decimal"
+                className="mt-1 w-full rounded-lg border border-[#D8D0BE] bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]" />
+            </label>
+          </div>
+          <p className="text-[11px] text-[#8A8272] leading-relaxed">Güncel stopaj oranını bankandan veya hesap ekstrenden teyit et — bu hesaplama tahminidir.</p>
+
+          <div className="rounded-xl bg-[#1B2430] p-4">
+            <p className="text-[11px] uppercase tracking-wider text-[#8A93A3] mb-1">Tahmini Net Getiri</p>
+            <p className="font-serif text-2xl font-semibold text-[#C9A227] tabular-nums">{tl(netGetiri)}</p>
+            <p className="text-[11px] text-[#8A93A3] mt-1">{gunN} günde · brüt {tl(brutGetiri)}</p>
+          </div>
+
+          <button onClick={ekle} disabled={!netGetiri || netGetiri <= 0}
+            className="w-full rounded-lg py-2.5 text-white font-medium bg-[#2F6E5C] active:scale-95 flex items-center justify-center gap-2" style={{ opacity: (!netGetiri || netGetiri <= 0) ? 0.4 : 1 }}>
+            ＋ Gelirlere Ekle
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function KalemListesi({ baslik, renk, kalemler, onEkle, onGuncelle, onSil, emoji }) {
   const [ad, setAd] = useState("");
@@ -509,7 +579,7 @@ function AbonelikBolumu({ kalemler, onEkle, onGuncelle, onSil }) {
   );
 }
 
-function AracGiderBolumu({ kalemler, onEkle, onGuncelle, onSil }) {
+function AracGiderBolumu({ kalemler, kartKalemleri, onEkle, onGuncelle, onSil }) {
   const [ad, setAd] = useState("");
   const [tutar, setTutar] = useState("");
   const [kategori, setKategori] = useState(ARAC_KATEGORILERI[0].id);
@@ -527,9 +597,16 @@ function AracGiderBolumu({ kalemler, onEkle, onGuncelle, onSil }) {
     formuTemizle();
   };
 
-  const toplam = kalemler.reduce((s, k) => s + k.tutar, 0);
+  const kartListesi = (kartKalemleri || []).map((k) => ({
+    id: k.id, ad: k.aciklama, tutar: k.tutar,
+    kategori: k.kategori === "yakit" ? "yakit" : "diger",
+    kartKaynakli: true, kartBanka: k.kartBanka,
+  }));
+  const tumKalemler = [...kalemler, ...kartListesi];
+
+  const toplam = tumKalemler.reduce((s, k) => s + k.tutar, 0);
   const kategoriToplamlari = ARAC_KATEGORILERI.map((k) => ({
-    ...k, toplam: kalemler.filter((x) => x.kategori === k.id).reduce((s, x) => s + x.tutar, 0),
+    ...k, toplam: tumKalemler.filter((x) => x.kategori === k.id).reduce((s, x) => s + x.tutar, 0),
   })).filter((k) => k.toplam > 0);
 
   return (
@@ -538,6 +615,10 @@ function AracGiderBolumu({ kalemler, onEkle, onGuncelle, onSil }) {
         <div className="flex items-center gap-2"><span>🚗</span><h3 className="font-semibold text-[#1B2430] tracking-tight">Araç Giderleri</h3></div>
         <span className="font-mono text-sm font-semibold text-[#2F6E5C]">{tl(toplam)}</span>
       </div>
+
+      {kartListesi.length > 0 && (
+        <p className="text-[11px] text-[#8A8272] mb-3 leading-relaxed">💳 işaretli kalemler kredi kartı ekstrenden otomatik geldi — bunları Kredi Kartı sekmesindeki harcama raporundan düzenleyebilir veya kategorisini değiştirebilirsin.</p>
+      )}
 
       {kategoriToplamlari.length > 0 && (
         <div className="mb-4">
@@ -556,9 +637,21 @@ function AracGiderBolumu({ kalemler, onEkle, onGuncelle, onSil }) {
       )}
 
       <div className="space-y-2 mb-4 max-h-52 overflow-y-auto">
-        {kalemler.length === 0 && <p className="text-sm text-[#8A8272] italic">Henüz araç gideri eklenmedi.</p>}
-        {kalemler.map((k) => {
+        {tumKalemler.length === 0 && <p className="text-sm text-[#8A8272] italic">Henüz araç gideri eklenmedi.</p>}
+        {tumKalemler.map((k) => {
           const katInfo = ARAC_KATEGORILERI.find((x) => x.id === k.kategori) || ARAC_KATEGORILERI[4];
+          if (k.kartKaynakli) {
+            return (
+              <div key={k.id} className="flex items-center justify-between rounded-lg px-3 py-2 text-sm bg-[#C9A227]/10">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span style={{ color: katInfo.renk }}>{katInfo.emoji}</span>
+                  <span className="text-[#1B2430]">{k.ad}</span>
+                  <span className="text-[10px] text-[#8A8272]">💳 {k.kartBanka}</span>
+                </div>
+                <span className="font-mono text-[#4A4438] ml-2">{tl(k.tutar)}</span>
+              </div>
+            );
+          }
           return (
             <div key={k.id} className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${duzenlenenId === k.id ? "bg-[#2F6E5C]/15 ring-1 ring-[#2F6E5C]" : "bg-white/60"}`}>
               <div className="flex items-center gap-2">
@@ -1089,9 +1182,21 @@ function HesapKitap() {
   const toplamGelir = gelirler.reduce((s, k) => s + k.tutar, 0);
   const toplamSabitGider = sabitGiderler.reduce((s, k) => s + k.tutar, 0);
   const toplamAbonelik = abonelikler.reduce((s, k) => s + k.tutar, 0);
-  const toplamArac = aracGiderleri.reduce((s, k) => s + k.tutar, 0);
   const toplamKredi = krediler.reduce((s, k) => s + k.tutar, 0);
-  const toplamKartHarcamasi = krediKartlari.reduce((s, k) => s + (k.islemler || []).reduce((s2, i) => s2 + i.tutar, 0), 0);
+
+  const kartAracKalemleri = [];
+  krediKartlari.forEach((k) => {
+    (k.islemler || []).forEach((i) => {
+      if (ARAC_SENKRON_KATEGORILERI.includes(i.kategori)) kartAracKalemleri.push({ ...i, kartId: k.id, kartBanka: k.banka });
+    });
+  });
+  const toplamKartArac = kartAracKalemleri.reduce((s, i) => s + i.tutar, 0);
+  const toplamArac = aracGiderleri.reduce((s, k) => s + k.tutar, 0) + toplamKartArac;
+
+  const toplamKartHarcamasi = krediKartlari.reduce(
+    (s, k) => s + (k.islemler || []).filter((i) => !ARAC_SENKRON_KATEGORILERI.includes(i.kategori)).reduce((s2, i) => s2 + i.tutar, 0),
+    0
+  );
   const toplamGider = toplamSabitGider + toplamAbonelik + toplamArac + toplamKredi + toplamKartHarcamasi;
   const net = toplamGelir - toplamGider;
 
@@ -1153,6 +1258,8 @@ function HesapKitap() {
               </div>
             </div>
 
+            <VadeliHesapHesaplayici onEkle={(k) => setGelirler((g) => [...g, k])} />
+
             <KalemListesi baslik="Gelirler" renk="#2F6E5C" emoji="📈" kalemler={gelirler}
               onEkle={(k) => setGelirler((g) => [...g, k])}
               onGuncelle={(k) => setGelirler((g) => g.map((x) => (x.id === k.id ? k : x)))}
@@ -1174,7 +1281,7 @@ function HesapKitap() {
 
         {sekme === "arac" && (
           <div className="pb-10">
-            <AracGiderBolumu kalemler={aracGiderleri} onEkle={(k) => setAracGiderleri((a) => [...a, k])}
+            <AracGiderBolumu kalemler={aracGiderleri} kartKalemleri={kartAracKalemleri} onEkle={(k) => setAracGiderleri((a) => [...a, k])}
               onGuncelle={(k) => setAracGiderleri((a) => a.map((x) => (x.id === k.id ? k : x)))}
               onSil={(id) => setAracGiderleri((a) => a.filter((x) => x.id !== id))} />
           </div>
