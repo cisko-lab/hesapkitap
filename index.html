@@ -270,7 +270,8 @@ function harcamaKategorisiBul(aciklama) {
 function islemSatirlariCikar(metin) {
   const atlaDeseni = /toplam|asgari|bor[çc]|limit\b|genel\b|sayfa\b|devir\b|hesap\s*[öo]zeti|kesim\s*tarihi|son\s*[öo]deme|faiz\s*oran|kkdf|bsmv|vergi|puan\b|ekstre\s*no|m[üu][şs]teri\s*no|kart\s*no|iban/i;
   const tarihBasiDeseni = /^(\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4})\s+/;
-  const taksitDeseni = /\(?\b(\d{1,2})\s*\/\s*(\d{1,2})\b\)?/;
+  const tarihGenelDeseni = /\b\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}\b/g;
+  const taksitDeseni = /\(?\b(\d{1,2})\s*\/\s*(\d{1,2})\b\)?/g;
   const sayiDeseni = /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*(?:TL|₺)?/g;
 
   const islemler = [];
@@ -282,19 +283,33 @@ function islemSatirlariCikar(metin) {
 
     let tarih = null;
     const tarihE = satir.match(tarihBasiDeseni);
-    if (tarihE) { tarih = tarihE[1]; satir = satir.slice(tarihE[0].length); }
+    if (tarihE) tarih = tarihE[1];
+
+    satir = satir.replace(tarihGenelDeseni, " ");
 
     let taksit = null;
-    const taksitE = satir.match(taksitDeseni);
-    if (taksitE) {
-      taksit = { no: parseInt(taksitE[1], 10), sayisi: parseInt(taksitE[2], 10) };
-      satir = satir.slice(0, taksitE.index) + " " + satir.slice(taksitE.index + taksitE[0].length);
+    taksitDeseni.lastIndex = 0;
+    let taksitEslesme;
+    while ((taksitEslesme = taksitDeseni.exec(satir)) !== null) {
+      const no = parseInt(taksitEslesme[1], 10);
+      const sayisi = parseInt(taksitEslesme[2], 10);
+      if (no >= 1 && sayisi >= 2 && sayisi <= 36 && no <= sayisi) {
+        taksit = { no, sayisi };
+        satir = satir.slice(0, taksitEslesme.index) + " " + satir.slice(taksitEslesme.index + taksitEslesme[0].length);
+        break;
+      }
     }
 
     const sayilar = [...satir.matchAll(sayiDeseni)];
     if (sayilar.length === 0) continue;
     const sonSayi = sayilar[sayilar.length - 1];
-    const aciklama = satir.slice(0, sonSayi.index).trim().replace(/\s{2,}/g, " ");
+    let aciklama = satir.slice(0, sonSayi.index).trim();
+    aciklama = aciklama
+      .replace(/\bTAKS[İI]T\b/gi, " ")
+      .replace(/\bPE[ŞS][İI]N\b/gi, " ")
+      .replace(/[-*]{2,}/g, " ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
     const tutar = turkceSayiCoz(sonSayi[1]);
 
     if (!tutar || tutar <= 0 || tutar > 500000) continue;
@@ -784,13 +799,15 @@ function KrediBolumu({ kalemler, onEkle, onGuncelle, onSil }) {
   );
 }
 
-function KrediKartiSatiri({ kart, onSil, acik, onToggle, onDuzenleBaslat, onKategoriDegistir }) {
+function KrediKartiSatiri({ kart, onSil, acik, onToggle, onDuzenleBaslat, onKategoriDegistir, onIslemGuncelle, onIslemSil, onIslemEkle }) {
   const plan = useMemo(() => hesaplaAsgariOdemePlani({
     bakiye: kart.bakiye, aylikFaizYuzde: kart.faiz, asgariYuzde: kart.asgariYuzde, tabanOdeme: 0, vergiYuzde: kart.vergiYuzde,
   }), [kart.bakiye, kart.faiz, kart.asgariYuzde, kart.vergiYuzde]);
   const grafikVerisi = plan.rows.filter((_, i) => i % Math.ceil(plan.rows.length / 40 || 1) === 0);
   const kalanGun = sonrakiTekrarGunSayisi(kart.gun);
   const yakinda = kalanGun !== null && kalanGun <= 7;
+  const taksitliIslemler = (kart.islemler || []).filter((i) => i.taksit);
+  const toplamTaksitTutari = taksitliIslemler.reduce((s, i) => s + i.tutar, 0);
 
   return (
     <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
@@ -836,7 +853,16 @@ function KrediKartiSatiri({ kart, onSil, acik, onToggle, onDuzenleBaslat, onKate
             {kart.gun && <span>Ödeme günü: {kart.gun}</span>}
           </div>
 
-          <HarcamaRaporu islemler={kart.islemler} onKategoriDegistir={(aciklama, kategori) => onKategoriDegistir(kart.id, aciklama, kategori)} />
+          {taksitliIslemler.length > 0 && (
+            <div className="rounded-xl bg-[#1B2430] p-4">
+              <p className="text-[11px] uppercase tracking-wider text-[#8A93A3] mb-1">Bu Ayki Toplam Taksit Tutarı</p>
+              <p className="font-serif text-xl font-semibold text-[#7FBFA6] tabular-nums">{tl(toplamTaksitTutari)}</p>
+              <p className="text-[11px] text-[#8A93A3] mt-1">{taksitliIslemler.length} taksitli işlem</p>
+            </div>
+          )}
+
+          <HarcamaRaporu islemler={kart.islemler} onKategoriDegistir={(aciklama, kategori) => onKategoriDegistir(kart.id, aciklama, kategori)}
+            onIslemGuncelle={onIslemGuncelle} onIslemSil={onIslemSil} onIslemEkle={onIslemEkle} />
 
           <button onClick={() => onDuzenleBaslat(kart)} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium text-[#1B2430] border border-[#D8D0BE] active:scale-95">
             ✏️ Bu Kartı Düzenle
@@ -847,8 +873,29 @@ function KrediKartiSatiri({ kart, onSil, acik, onToggle, onDuzenleBaslat, onKate
   );
 }
 
-function HarcamaRaporu({ islemler, onKategoriDegistir }) {
+function HarcamaRaporu({ islemler, onKategoriDegistir, onIslemGuncelle, onIslemSil, onIslemEkle }) {
   const [acik, setAcik] = useState(false);
+  const [duzenlenenId, setDuzenlenenId] = useState(null);
+  const [duzAciklama, setDuzAciklama] = useState("");
+  const [duzTutar, setDuzTutar] = useState("");
+  const [manuelAcik, setManuelAcik] = useState(false);
+  const [manAciklama, setManAciklama] = useState("");
+  const [manTutar, setManTutar] = useState("");
+  const [manKategori, setManKategori] = useState(HARCAMA_KATEGORILERI[HARCAMA_KATEGORILERI.length - 1].id);
+
+  const duzenlemeyeBasla = (islem) => { setDuzenlenenId(islem.id); setDuzAciklama(islem.aciklama); setDuzTutar(String(islem.tutar)); };
+  const duzenlemeyiKaydet = () => {
+    const t = parseFloat(duzTutar.replace(",", "."));
+    if (!duzAciklama.trim() || !t || t <= 0) return;
+    onIslemGuncelle(duzenlenenId, { aciklama: duzAciklama.trim(), tutar: t });
+    setDuzenlenenId(null);
+  };
+  const manuelEkle = () => {
+    const t = parseFloat(manTutar.replace(",", "."));
+    if (!manAciklama.trim() || !t || t <= 0) return;
+    onIslemEkle({ id: uid(), tarih: null, aciklama: manAciklama.trim(), tutar: t, taksit: null, kategori: manKategori });
+    setManAciklama(""); setManTutar(""); setManuelAcik(false);
+  };
 
   if (!islemler || islemler.length === 0) {
     return (
@@ -896,7 +943,7 @@ function HarcamaRaporu({ islemler, onKategoriDegistir }) {
       </div>
 
       {acik && (
-        <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
+        <div className="mt-3 space-y-2 max-h-72 overflow-y-auto">
           {gruplar.map((grup) => {
             const kat = HARCAMA_KATEGORILERI.find((k) => k.id === grup.kategori) || HARCAMA_KATEGORILERI[HARCAMA_KATEGORILERI.length - 1];
             return (
@@ -909,11 +956,24 @@ function HarcamaRaporu({ islemler, onKategoriDegistir }) {
                   </div>
                   <span className="font-mono text-[11px] text-[#4A4438]">{tl(grup.toplam)}</span>
                 </div>
-                <div className="space-y-0.5 mb-1.5">
-                  {grup.kalemler.map((k) => (
-                    <p key={k.id} className="text-[10px] text-[#8A8272]">
-                      {k.tarih ? `${k.tarih} · ` : ""}{tl(k.tutar)}{k.taksit ? ` · ${k.taksit.no}/${k.taksit.sayisi} taksit` : ""}
-                    </p>
+                <div className="space-y-1 mb-1.5">
+                  {grup.kalemler.map((k) => duzenlenenId === k.id ? (
+                    <div key={k.id} className="flex items-center gap-1.5 bg-[#C9A227]/10 rounded-md p-1.5">
+                      <input value={duzAciklama} onChange={(e) => setDuzAciklama(e.target.value)} placeholder="Açıklama"
+                        className="flex-1 min-w-0 text-[10px] rounded border border-[#D8D0BE] bg-white px-1.5 py-1" />
+                      <input value={duzTutar} onChange={(e) => setDuzTutar(e.target.value)} inputMode="decimal" placeholder="₺"
+                        className="w-16 text-[10px] rounded border border-[#D8D0BE] bg-white px-1.5 py-1" />
+                      <button onClick={duzenlemeyiKaydet} className="text-[#2F6E5C]">✓</button>
+                      <button onClick={() => setDuzenlenenId(null)} className="text-[#6B7280]">✕</button>
+                    </div>
+                  ) : (
+                    <div key={k.id} className="flex items-center justify-between text-[10px] text-[#8A8272]">
+                      <span>{k.tarih ? `${k.tarih} · ` : ""}{tl(k.tutar)}{k.taksit ? ` · ${k.taksit.no}/${k.taksit.sayisi} taksit` : ""}</span>
+                      <span className="flex items-center gap-1.5">
+                        <button onClick={() => duzenlemeyeBasla(k)} className="text-[#6B7280] hover:text-[#1B2430]">✏️</button>
+                        <button onClick={() => onIslemSil(k.id)} className="text-[#B24C34]/60 hover:text-[#B24C34]">🗑</button>
+                      </span>
+                    </div>
                   ))}
                 </div>
                 <select value={grup.kategori} onChange={(e) => onKategoriDegistir(grup.aciklama, e.target.value)}
@@ -923,6 +983,27 @@ function HarcamaRaporu({ islemler, onKategoriDegistir }) {
               </div>
             );
           })}
+
+          {manuelAcik ? (
+            <div className="bg-white/60 rounded-lg p-2.5 space-y-1.5">
+              <input value={manAciklama} onChange={(e) => setManAciklama(e.target.value)} placeholder="Açıklama (ör. Elden ödeme)"
+                className="w-full text-[11px] rounded-md border border-[#D8D0BE] bg-white px-2 py-1.5" />
+              <div className="flex gap-1.5">
+                <input value={manTutar} onChange={(e) => setManTutar(e.target.value)} inputMode="decimal" placeholder="₺"
+                  className="w-20 text-[11px] rounded-md border border-[#D8D0BE] bg-white px-2 py-1.5" />
+                <select value={manKategori} onChange={(e) => setManKategori(e.target.value)}
+                  className="flex-1 min-w-0 text-[11px] rounded-md border border-[#D8D0BE] bg-white px-2 py-1.5">
+                  {HARCAMA_KATEGORILERI.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
+                </select>
+                <button onClick={manuelEkle} className="rounded-md px-2.5 bg-[#2F6E5C] text-white">✓</button>
+                <button onClick={() => setManuelAcik(false)} className="rounded-md px-2.5 border border-[#D8D0BE] text-[#6B7280]">✕</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setManuelAcik(true)} className="w-full flex items-center justify-center gap-1.5 rounded-lg py-2 text-[11px] font-medium text-[#6B7280]" style={{ borderStyle: "dashed", borderWidth: "1px", borderColor: "#D8D0BE" }}>
+              ＋ Manuel İşlem Ekle
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1009,11 +1090,32 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
     onGuncelle({ ...kart, islemler: yeniIslemler });
   };
 
+  const islemGuncelle = (kartId, islemId, degisiklik) => {
+    const kart = kartlar.find((k) => k.id === kartId);
+    if (!kart) return;
+    onGuncelle({ ...kart, islemler: (kart.islemler || []).map((i) => i.id === islemId ? { ...i, ...degisiklik } : i) });
+  };
+
+  const islemSil = (kartId, islemId) => {
+    const kart = kartlar.find((k) => k.id === kartId);
+    if (!kart) return;
+    onGuncelle({ ...kart, islemler: (kart.islemler || []).filter((i) => i.id !== islemId) });
+  };
+
+  const islemEkle = (kartId, yeniIslem) => {
+    const kart = kartlar.find((k) => k.id === kartId);
+    if (!kart) return;
+    onGuncelle({ ...kart, islemler: [...(kart.islemler || []), yeniIslem] });
+  };
+
   return (
     <div className="space-y-3">
       {sirali.length === 0 && <p className="text-sm text-[#8A8272] italic px-1">Henüz kredi kartı eklenmedi.</p>}
       {sirali.map((k) => (
-        <KrediKartiSatiri key={k.id} kart={k} onSil={onSil} acik={acikId === k.id} onToggle={() => setAcikId(acikId === k.id ? null : k.id)} onDuzenleBaslat={duzenlemeyeBasla} onKategoriDegistir={kategoriDegistir} />
+        <KrediKartiSatiri key={k.id} kart={k} onSil={onSil} acik={acikId === k.id} onToggle={() => setAcikId(acikId === k.id ? null : k.id)} onDuzenleBaslat={duzenlemeyeBasla} onKategoriDegistir={kategoriDegistir}
+          onIslemGuncelle={(islemId, degisiklik) => islemGuncelle(k.id, islemId, degisiklik)}
+          onIslemSil={(islemId) => islemSil(k.id, islemId)}
+          onIslemEkle={(yeniIslem) => islemEkle(k.id, yeniIslem)} />
       ))}
 
       <div className="rounded-2xl bg-[#F1ECE1] border border-[#D8D0BE] p-5">
@@ -1066,6 +1168,58 @@ function KartlarBolumu({ kartlar, onEkle, onGuncelle, onSil }) {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function YedeklemeBolumu({ veriyiTopla, veriyiGeriYukle }) {
+  const [hata, setHata] = useState("");
+  const [basarili, setBasarili] = useState(false);
+
+  const disaAktar = () => {
+    const veri = veriyiTopla();
+    const blob = new Blob([JSON.stringify(veri, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `hesap-kitap-yedek-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const iceAktar = async (e) => {
+    const dosya = e.target.files[0];
+    if (!dosya) return;
+    setHata(""); setBasarili(false);
+    try {
+      const metin = await dosya.text();
+      const veri = JSON.parse(metin);
+      veriyiGeriYukle(veri);
+      setBasarili(true);
+    } catch (err) {
+      setHata("Yedek dosyası okunamadı — dosyanın bozulmadığından emin ol.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <div className="rounded-2xl bg-[#F1ECE1] p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-2"><span>🗄️</span><h3 className="font-semibold text-[#1B2430] tracking-tight">Veri Yedekleme</h3></div>
+      <p className="text-[11px] text-[#8A8272] mb-4 leading-relaxed">Verilerin cihazında otomatik olarak saklanıyor. Uygulamayı güncellediğimde de bu veriler korunur — yine de ara sıra bir yedek indirip saklaman, cihaz değiştirme veya beklenmedik bir durumda seni garantiye alır.</p>
+      <div className="flex gap-2">
+        <button onClick={disaAktar} className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium text-white bg-[#6B7280] active:scale-95">
+          ⬇️ Yedeği İndir
+        </button>
+        <label className="flex-1 flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-medium text-[#1B2430] border border-[#D8D0BE] cursor-pointer active:scale-95">
+          <input type="file" accept="application/json" className="hidden" onChange={iceAktar} />
+          ⬆️ Yedeği Geri Yükle
+        </label>
+      </div>
+      {basarili && <p className="text-[11px] text-[#2F6E5C] font-medium mt-2">Yedek başarıyla geri yüklendi.</p>}
+      {hata && <p className="text-[11px] text-[#B24C34] mt-2">{hata}</p>}
     </div>
   );
 }
@@ -1306,6 +1460,21 @@ function HesapKitap() {
         {sekme === "dokum" && (
           <DokumBolumu gelirler={gelirler} sabitGiderler={sabitGiderler} abonelikler={abonelikler} aracGiderleri={aracGiderleri} krediler={krediler} />
         )}
+
+        <div className="pt-2">
+          <YedeklemeBolumu
+            veriyiTopla={() => ({ gelirler, sabitGiderler, abonelikler, aracGiderleri, krediler, krediKartlari, karanlikMod })}
+            veriyiGeriYukle={(veri) => {
+              setGelirler(veri.gelirler || []);
+              setSabitGiderler(veri.sabitGiderler || []);
+              setAbonelikler(veri.abonelikler || []);
+              setAracGiderleri(veri.aracGiderleri || []);
+              setKrediler(veri.krediler || []);
+              setKrediKartlari(veri.krediKartlari || []);
+              if (typeof veri.karanlikMod === "boolean") setKaranlikMod(veri.karanlikMod);
+            }}
+          />
+        </div>
 
         <p className="text-center text-[11px] text-[#8A8272] pb-6 pt-2">İsmetcan Özkütükçü tarafından tasarlanmıştır</p>
       </div>
